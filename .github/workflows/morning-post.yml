@@ -73,13 +73,13 @@ jobs:
           import urllib.request, json, os, sys
           prompt = '''$PROMPT'''
           payload = json.dumps({
-            'model': 'meta-llama/Llama-3.1-8B-Instruct',
+            'model': 'mistralai/Mistral-7B-Instruct-v0.3',
             'messages': [{'role': 'user', 'content': prompt}],
             'max_tokens': 400,
             'temperature': 0.7
           }).encode()
           req = urllib.request.Request(
-            'https://router.huggingface.co/together/v1/chat/completions',
+            'https://api-inference.huggingface.co/v1/chat/completions',
             data=payload,
             headers={
               'Authorization': 'Bearer ' + os.environ['HF_TOKEN'],
