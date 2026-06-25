@@ -10,31 +10,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Send to LinkedIn Make webhook
-        run: |
-          python3 - <<'PYEOF'
-          import urllib.request, json, datetime
+      - name: Checkout VedaLingo app
+        uses: actions/checkout@v4
+        with:
+          repository: Rachna-Lende/VedaLingo
+          token: ${{ secrets.GH_PAT }}
 
-          today = datetime.date.today()
-          day_of_week = today.strftime('%A')
-          date_str = today.strftime('%d %B %Y')
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-          # Rotate through content types by day of week
-          types = ['mahabharata-dilemma', 'grammar-deep', 'ramayana-story',
-                   'feature-spotlight', 'philosophy-quiz', 'shloka-deep', 'sanskrit-science']
-          content_type = types[today.weekday()]
+      - name: Install dependencies
+        run: cd vac && npm install
 
-          payload = json.dumps({
-            'platform': 'linkedin',
-            'type': content_type,
-            'date': today.isoformat(),
-          })
-
-          req = urllib.request.Request(
-            'https://hook.eu1.make.com/mh8i54lbfad36arjwrtc6ndmrl1vnciw',
-            data=payload.encode(),
-            headers={'Content-Type': 'application/json'}
-          )
-          resp = urllib.request.urlopen(req)
-          print('LinkedIn webhook sent:', resp.status)
-          PYEOF
+      - name: Generate and send LinkedIn post
+        run: node vac/scripts/marketing/post-linkedin-webhook.mjs
