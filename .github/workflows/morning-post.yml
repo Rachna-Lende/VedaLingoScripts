@@ -86,8 +86,13 @@ jobs:
               'Content-Type': 'application/json'
             }
           )
-          resp = json.loads(urllib.request.urlopen(req).read())
-          print(resp['choices'][0]['message']['content'].strip())
+          try:
+            resp = json.loads(urllib.request.urlopen(req).read())
+            print(resp['choices'][0]['message']['content'].strip())
+          except urllib.error.HTTPError as e:
+            body = e.read().decode()
+            sys.stderr.write('Groq error ' + str(e.code) + ': ' + body + '\n')
+            sys.exit(1)
           ")
 
           # Escape for GITHUB_OUTPUT (replace newlines with \n literal)
