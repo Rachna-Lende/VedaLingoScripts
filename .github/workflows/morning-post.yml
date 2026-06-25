@@ -109,6 +109,27 @@ jobs:
           print('Webhook sent:', resp.status)
           PYEOF
 
+      - name: Send to LinkedIn webhook
+        run: |
+          python3 - <<'PYEOF'
+          import urllib.request, json
+          caption = open('/tmp/caption.txt').read().strip()
+          day = ${{ steps.reel.outputs.day }}
+          content_type = '${{ steps.reel.outputs.type }}'
+          content_id = '${{ steps.reel.outputs.contentId }}'
+          word = content_id.replace('-', ' ').title()
+          payload = json.dumps({
+            'platform': 'linkedin',
+            'text': caption,
+            'headline': f'Sanskrit {content_type.title()}: {word} | VedaLingo #{day}',
+            'type': content_type,
+            'video_url': '${{ steps.upload.outputs.url }}'
+          })
+          req = urllib.request.Request('https://hook.eu1.make.com/mh8i54lbfad36arjwrtc6ndmrl1vnciw', data=payload.encode(), headers={'Content-Type': 'application/json'})
+          resp = urllib.request.urlopen(req)
+          print('LinkedIn webhook sent:', resp.status)
+          PYEOF
+
       - name: Save updated post-state to repo
         run: |
           git config user.name  "VedaLingo Bot"
