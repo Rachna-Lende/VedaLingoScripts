@@ -82,6 +82,7 @@ jobs:
             -F "upload_preset=vedalingo_reels" \
             -F "public_id=$PUBLIC_ID" \
             -F "overwrite=true")
+          echo "Cloudinary response: $RESPONSE"
           VIDEO_URL=$(echo $RESPONSE | python3 -c "import sys,json; print(json.load(sys.stdin)['secure_url'])")
           echo "url=$VIDEO_URL" >> $GITHUB_OUTPUT
           echo "Video URL: $VIDEO_URL"
