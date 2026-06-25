@@ -67,18 +67,22 @@ jobs:
           echo "caption=$CAPTION" >> $GITHUB_OUTPUT
           echo "Caption: $CAPTION"
 
-      - name: Upload video to GitHub release (public URL for Make)
+      - name: Upload video to Cloudinary (permanent public URL)
         id: upload
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           FILE="${{ steps.reel.outputs.file }}"
-          FILENAME=$(basename "$FILE")
-          gh release create daily-reel --title "Daily Reel" --notes "Auto-uploaded" 2>/dev/null || true
-          gh release upload daily-reel "$FILE" --clobber
-          REDIRECT_URL=$(curl -sI "https://github.com/${{ github.repository }}/releases/download/daily-reel/$FILENAME" | grep -i "^location:" | tr -d '\r' | awk '{print $2}')
-          echo "url=$REDIRECT_URL" >> $GITHUB_OUTPUT
-          echo "Video URL: $REDIRECT_URL"
+          DAY="${{ steps.reel.outputs.day }}"
+          DAY_PAD=$(printf "%03d" $DAY)
+          PUBLIC_ID="vedalingo/day${DAY_PAD}_R2"
+          RESPONSE=$(curl -s -X POST \
+            "https://api.cloudinary.com/v1_1/${{ secrets.CLOUDINARY_CLOUD_NAME }}/video/upload" \
+            -F "file=@$FILE" \
+            -F "upload_preset=vedalingo_reels" \
+            -F "public_id=$PUBLIC_ID" \
+            -F "overwrite=true")
+          VIDEO_URL=$(echo $RESPONSE | python3 -c "import sys,json; print(json.load(sys.stdin)['secure_url'])")
+          echo "url=$VIDEO_URL" >> $GITHUB_OUTPUT
+          echo "Video URL: $VIDEO_URL"
 
       - name: Send to Make webhook (posts to Instagram)
         run: |
