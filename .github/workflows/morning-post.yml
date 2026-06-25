@@ -52,22 +52,52 @@ jobs:
           echo "contentId=$CONTENT_ID" >> $GITHUB_OUTPUT
           echo "Day: $CURRENT_DAY, File: $FILENAME, Type: $TYPE"
 
-      - name: Generate caption
+      - name: Generate caption with Groq AI
         id: caption
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           TYPE="${{ steps.reel.outputs.type }}"
           CONTENT_ID="${{ steps.reel.outputs.contentId }}"
           DAY="${{ steps.reel.outputs.day }}"
-          # Build caption based on type
+
           if [ "$TYPE" = "word" ]; then
-            CAPTION="✨ Sanskrit Word of the Day | VedaLingo #$DAY #VedaLingo #Sanskrit #SanskritLearning #LearnSanskrit #IndianHeritage"
+            PROMPT="Write an Instagram Reel caption for a Sanskrit word-of-the-day post about the word '${CONTENT_ID}'. Include: 1) the Sanskrit word in Devanagari script and IAST transliteration, 2) its English meaning, 3) one line of context or wisdom, 4) 'Learn Sanskrit with VedaLingo → vedalingo.in', 5) 8-10 relevant hashtags including #VedaLingo #Sanskrit #LearnSanskrit. Keep it engaging and under 200 words. Output only the caption text, nothing else."
           elif [ "$TYPE" = "grammar" ]; then
-            CAPTION="📚 Sanskrit Grammar Made Easy | VedaLingo #$DAY #VedaLingo #Sanskrit #SanskritGrammar #LearnSanskrit"
+            PROMPT="Write an Instagram Reel caption for a Sanskrit grammar lesson post about '${CONTENT_ID}'. Include: 1) the grammar concept name in Sanskrit and English, 2) a simple one-line explanation, 3) one example, 4) 'Learn Sanskrit with VedaLingo → vedalingo.in', 5) 8-10 hashtags including #VedaLingo #Sanskrit #SanskritGrammar. Keep it clear and under 200 words. Output only the caption text, nothing else."
           else
-            CAPTION="🌸 Story from Ancient India | VedaLingo #$DAY #VedaLingo #Sanskrit #IndianMythology #AncientWisdom"
+            PROMPT="Write an Instagram Reel caption for a Sanskrit story/mythology post about '${CONTENT_ID}'. Include: 1) the story name, 2) a one-line hook that makes people want to watch, 3) the key lesson or wisdom, 4) 'Learn Sanskrit with VedaLingo → vedalingo.in', 5) 8-10 hashtags including #VedaLingo #Sanskrit #IndianMythology. Keep it engaging and under 200 words. Output only the caption text, nothing else."
           fi
-          echo "caption=$CAPTION" >> $GITHUB_OUTPUT
-          echo "Caption: $CAPTION"
+
+          CAPTION=$(python3 -c "
+          import urllib.request, json, os, sys
+          prompt = '''$PROMPT'''
+          payload = json.dumps({
+            'model': 'llama-3.1-8b-instant',
+            'messages': [{'role': 'user', 'content': prompt}],
+            'max_tokens': 400,
+            'temperature': 0.7
+          }).encode()
+          req = urllib.request.Request(
+            'https://api.groq.com/openai/v1/chat/completions',
+            data=payload,
+            headers={
+              'Authorization': 'Bearer ' + os.environ['GROQ_API_KEY'],
+              'Content-Type': 'application/json'
+            }
+          )
+          resp = json.loads(urllib.request.urlopen(req).read())
+          print(resp['choices'][0]['message']['content'].strip())
+          ")
+
+          # Escape for GITHUB_OUTPUT (replace newlines with \n literal)
+          CAPTION_ESCAPED=$(echo "$CAPTION" | python3 -c "import sys; print(sys.stdin.read().rstrip().replace('\n', '\n'))")
+          {
+            echo "caption<<EOF_CAPTION"
+            echo "$CAPTION"
+            echo "EOF_CAPTION"
+          } >> $GITHUB_OUTPUT
+          echo "Caption generated: $CAPTION"
 
       - name: Upload video to Cloudinary (permanent public URL)
         id: upload
@@ -75,7 +105,7 @@ jobs:
           FILE="${{ steps.reel.outputs.file }}"
           DAY="${{ steps.reel.outputs.day }}"
           DAY_PAD=$(printf "%03d" $DAY)
-          PUBLIC_ID="vedalingo/day${DAY_PAD}_R1"
+          PUBLIC_ID="vedalingo/day${DAY_PAD}_R1_$(date +%s)"
           RESPONSE=$(curl -s -X POST \
             "https://api.cloudinary.com/v1_1/${{ secrets.CLOUDINARY_CLOUD_NAME }}/video/upload" \
             -F "file=@$FILE" \
