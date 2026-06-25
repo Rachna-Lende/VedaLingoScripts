@@ -77,17 +77,24 @@ jobs:
           echo "url=$VIDEO_URL" >> $GITHUB_OUTPUT
           echo "Video URL: $VIDEO_URL"
 
-      - name: Send to Make webhook (posts to Instagram)
+      - name: Send to Make webhook (posts to Instagram + YouTube)
         run: |
           python3 - <<'PYEOF'
           import urllib.request, json
           caption = open('/tmp/caption.txt').read().strip()
+          day = ${{ steps.reel.outputs.day }}
+          content_type = '${{ steps.reel.outputs.type }}'
+          content_id = '${{ steps.reel.outputs.contentId }}'
+          word = content_id.replace('-', ' ').title()
+          title = f'Sanskrit {content_type.title()}: {word} | VedaLingo #{day}'[:100]
           payload = json.dumps({
             'video_url': '${{ steps.upload.outputs.url }}',
             'caption': caption,
-            'day': ${{ steps.reel.outputs.day }},
+            'title': title,
+            'filename': f'day{day:03d}_R1_{content_id}.mp4',
+            'day': day,
             'reel': 'R1',
-            'type': '${{ steps.reel.outputs.type }}'
+            'type': content_type
           })
           req = urllib.request.Request('${{ secrets.MAKE_INSTAGRAM_WEBHOOK }}', data=payload.encode(), headers={'Content-Type': 'application/json'})
           resp = urllib.request.urlopen(req)
