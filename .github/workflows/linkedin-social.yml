@@ -1,8 +1,8 @@
-name: Daily Social Post — LinkedIn + Facebook (8 AM IST)
+name: Daily Social Post — LinkedIn (8 AM IST)
 
 on:
   schedule:
-    - cron: '30 2 * * *'   # 8:00 AM IST
+    - cron: '35 2 * * *'   # 8:05 AM IST (5 min after morning reel)
   workflow_dispatch:
 
 jobs:
@@ -10,23 +10,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout VedaLingo app
-        uses: actions/checkout@v4
-        with:
-          repository: Rachna-Lende/VedaLingo
-          token: ${{ secrets.GH_PAT }}
+      - name: Send to LinkedIn Make webhook
+        run: |
+          python3 - <<'PYEOF'
+          import urllib.request, json, datetime
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+          today = datetime.date.today()
+          day_of_week = today.strftime('%A')
+          date_str = today.strftime('%d %B %Y')
 
-      - name: Install dependencies
-        run: cd vac && npm install
+          # Rotate through content types by day of week
+          types = ['mahabharata-dilemma', 'grammar-deep', 'ramayana-story',
+                   'feature-spotlight', 'philosophy-quiz', 'shloka-deep', 'sanskrit-science']
+          content_type = types[today.weekday()]
 
-      - name: Run daily social post
-        env:
-          LINKEDIN_ACCESS_TOKEN:    ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
-          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
-          FACEBOOK_PAGE_ID:         ${{ secrets.FACEBOOK_PAGE_ID }}
-        run: node vac/scripts/marketing/daily-post.mjs
+          payload = json.dumps({
+            'platform': 'linkedin',
+            'type': content_type,
+            'date': today.isoformat(),
+          })
+
+          req = urllib.request.Request(
+            'https://hook.eu1.make.com/mh8i54lbfad36arjwrtc6ndmrl1vnciw',
+            data=payload.encode(),
+            headers={'Content-Type': 'application/json'}
+          )
+          resp = urllib.request.urlopen(req)
+          print('LinkedIn webhook sent:', resp.status)
+          PYEOF
