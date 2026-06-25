@@ -1,0 +1,78 @@
+name: Daily Content Audit + Fix + Deploy (6:30 AM IST)
+
+on:
+  schedule:
+    - cron: '0 1 * * *'    # 6:30 AM IST
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout VedaLingo app
+        uses: actions/checkout@v4
+        with:
+          repository: Rachna-Lende/VedaLingo
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run content audit agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude -p "$(cat <<'PROMPT'
+          You are performing the daily content quality audit for VedaLingo (vedalingo.in), a Sanskrit learning app. The codebase is in the current directory under vac/.
+
+          ## PHASE 1 — AUDIT (check these files for errors)
+          Read and audit:
+          - vac/lib/content/chapters/ (all modules files) — check verb conjugations, noun declensions, sandhi rules, IAST accuracy
+          - vac/lib/content/words-data.ts — check Devanagari/IAST consistency, meaning accuracy
+          - vac/lib/content/mahabharata-stories.ts — check mythological accuracy against BORI critical edition
+          - vac/lib/content/stories-data.ts — check Ramayana, Panchatantra, historical figures
+
+          Key checks:
+          - Devanagari ↔ IAST consistency (अ→a, आ→ā, etc.)
+          - No misidentified deities or misattributed attributes
+          - No wrong dates/locations in historical stories
+          - Shloka attributions are correct (BG 2.47, Yoga Sutras 1.2, etc.)
+
+          ## PHASE 2 — FIX all CRITICAL and MODERATE issues found
+          Use the Edit tool to fix each issue. Fix only what is clearly wrong — do not rewrite correct content.
+
+          ## PHASE 3 — Write audit report
+          Write the report to: vac/content-audit-reports/audit-$(date +%Y-%m-%d).md
+          Create the directory if needed.
+          Format: Summary counts, grade (SCHOLAR-APPROVED / NEEDS-WORK / CRITICAL-ISSUES), full issue list with file+line, fixes applied.
+
+          Be thorough but efficient. Focus on CRITICAL accuracy issues first.
+          PROMPT
+          )" \
+          --allowedTools "Edit,Write,Read,Bash" \
+          --max-turns 40 \
+          --output-format text
+
+      - name: Commit fixes + audit report
+        run: |
+          git config user.name  "VedaLingo Audit Bot"
+          git config user.email "rachna.lende@gmail.com"
+          git add -A
+          git diff --staged --quiet || git commit -m "audit: content fixes + report $(date +%Y-%m-%d) [skip ci]"
+          git push
+
+      - name: Deploy to Vercel (only if fixes were made)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npm install -g vercel
+          cd vac && vercel deploy --prod --token "$VERCEL_TOKEN" --yes

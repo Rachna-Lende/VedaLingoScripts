@@ -1,0 +1,50 @@
+name: Daily Analytics Report (9 AM IST)
+
+on:
+  schedule:
+    - cron: '30 3 * * *'   # 9:00 AM IST
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout VedaLingoScripts
+        uses: actions/checkout@v4
+
+      - name: Checkout VedaLingo app (to save reports there)
+        uses: actions/checkout@v4
+        with:
+          repository: Rachna-Lende/VedaLingo
+          token: ${{ secrets.GH_PAT }}
+          path: vedalingo-app
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: cd github-scripts && npm install
+
+      - name: Write GA4 service account key
+        env:
+          GA_SERVICE_ACCOUNT_JSON: ${{ secrets.GA_SERVICE_ACCOUNT_JSON }}
+        run: echo "$GA_SERVICE_ACCOUNT_JSON" > github-scripts/ga-service-account.json
+
+      - name: Generate analytics report
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GA_PROPERTY_ID: '541501284'
+          REPORT_OUTPUT_DIR: ${{ github.workspace }}/vedalingo-app/analytics-reports
+        run: node github-scripts/analytics-report.js
+
+      - name: Commit report to VedaLingo app repo
+        run: |
+          cd vedalingo-app
+          git config user.name  "VedaLingo Bot"
+          git config user.email "rachna.lende@gmail.com"
+          git add analytics-reports/
+          git diff --staged --quiet || git commit -m "chore: daily analytics report $(date +%Y-%m-%d) [skip ci]"
+          git push

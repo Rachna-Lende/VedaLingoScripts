@@ -1,0 +1,9 @@
+{
+  "name": "vedalingo-github-scripts",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
+    "@google-analytics/data": "^4.0.0"
+  }
+}

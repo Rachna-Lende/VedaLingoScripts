@@ -1,0 +1,73 @@
+name: Daily SEO — Blog Post + Metadata (7 AM IST)
+
+on:
+  schedule:
+    - cron: '30 1 * * *'   # 7:00 AM IST
+  workflow_dispatch:
+
+jobs:
+  seo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout VedaLingo app
+        uses: actions/checkout@v4
+        with:
+          repository: Rachna-Lende/VedaLingo
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run SEO agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude -p "$(cat <<'PROMPT'
+          You are the SEO agent for VedaLingo (vedalingo.in) — a Sanskrit learning app built in Next.js 14 at the current directory.
+
+          TODAY'S TASK — do ALL of the following:
+
+          ## PRIORITY 1 — Write ONE new blog post
+          Check which posts already exist in vac/app/blog/. Then write the next one from this list that does NOT exist yet:
+          ramayana-characters-names-meaning, sanskrit-numbers-1-to-100, panchatantra-stories-moral-lessons, upanishads-for-beginners, sanskrit-words-used-in-science, bhagavad-gita-chapter-2-summary, hanuman-chalisa-meaning-line-by-line, sanskrit-for-yoga-teachers, karma-dharma-moksha-explained, ayurveda-sanskrit-terms, sanskrit-shlokas-for-students, indian-mythology-character-names-sanskrit, vedic-math-sanskrit-connection, mahabharata-dilemmas-modern-life, sanskrit-affirmations-morning-routine, nakshatra-birth-star-guide, bhagavad-gita-karma-yoga, shivaji-maharaj-story-bravery
+
+          Blog post must be: 800-1200 words, full Next.js page.tsx, export const metadata with title/description/keywords/openGraph/twitter, internal links to 3+ VedaLingo pages, CTA to vedalingo.in at end. Warm engaging tone.
+
+          ## PRIORITY 2 — Fix metadata on 3 pages
+          Pick 3 pages from: /explore/root-detective, /explore/personality, /explore/nakshatra, /explore/dreams, /explore/rasoi, /stories/mahabharata, /heritage, /fun, /quiz, /speak, /why
+          Add or improve: title, description, keywords, openGraph, twitter card. Use 'export const metadata: Metadata' (server component pattern, NOT next/head).
+
+          ## PRIORITY 3 — Update sitemap
+          Add any new pages to vac/app/sitemap.ts.
+
+          Design palette: bg #F5E6C8, card #EDD9A3, border #B8860B, text #3B1F00, accent #D4900A
+          Project path: vac/ subdirectory.
+          PROMPT
+          )" \
+          --allowedTools "Edit,Write,Read,Bash" \
+          --max-turns 30 \
+          --output-format text
+
+      - name: Commit and push SEO changes
+        run: |
+          git config user.name  "VedaLingo SEO Bot"
+          git config user.email "rachna.lende@gmail.com"
+          git add -A
+          git diff --staged --quiet || git commit -m "seo: daily blog + metadata $(date +%Y-%m-%d) [skip ci]"
+          git push
+
+      - name: Deploy to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npm install -g vercel
+          cd vac && vercel deploy --prod --token "$VERCEL_TOKEN" --yes

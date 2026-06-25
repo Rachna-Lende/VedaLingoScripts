@@ -1,0 +1,70 @@
+name: Generate Next Reel Batch (every 89 days check)
+
+on:
+  schedule:
+    - cron: '0 3 * * *'    # 8:30 AM IST — daily check, only runs if batch is due
+  workflow_dispatch:         # also allow manual trigger
+
+jobs:
+  check-and-generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360    # 6 hours — batch generation takes 2-3 hours
+
+    steps:
+      - name: Checkout repo (with LFS videos)
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install system dependencies (ffmpeg + chromium for Puppeteer)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ffmpeg
+          npx puppeteer browsers install chrome
+
+      - name: Install Node dependencies
+        run: npm install
+
+      - name: Check if batch is due today
+        id: check
+        run: |
+          node -e "
+          const fs = require('fs');
+          const state = JSON.parse(fs.readFileSync('batch-state.json', 'utf8'));
+          const nextRun = new Date(state.nextScheduledRun);
+          const today   = new Date();
+          today.setHours(0,0,0,0);
+          nextRun.setHours(0,0,0,0);
+          const due = today >= nextRun;
+          console.log('Next batch due:', state.nextScheduledRun);
+          console.log('Due today:', due);
+          // Write output for GitHub Actions
+          require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'due=' + due + '\n');
+          "
+
+      - name: Generate next batch (if due)
+        if: steps.check.outputs.due == 'true'
+        run: node run-next-batch.js
+
+      - name: Commit new reels to repo (via LFS)
+        if: steps.check.outputs.due == 'true'
+        run: |
+          git config user.name  "VedaLingo Batch Bot"
+          git config user.email "rachna.lende@gmail.com"
+          git add output/ batch-state.json
+          git diff --staged --quiet || git commit -m "batch: generate next 90-day batch [skip ci]"
+          git push
+
+      - name: Skip message (if not due)
+        if: steps.check.outputs.due != 'true'
+        run: |
+          node -e "
+          const state = JSON.parse(require('fs').readFileSync('batch-state.json', 'utf8'));
+          console.log('Next batch not due until', state.nextScheduledRun, '— nothing to do today.');
+          "
