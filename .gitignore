@@ -1,0 +1,8 @@
+node_modules/
+automation/node_modules/
+automation/credentials.json
+automation/post-logs/
+*.log
+.env
+batch-logs/
+.vercel/

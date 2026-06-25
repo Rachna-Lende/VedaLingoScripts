@@ -1,0 +1,9 @@
+{
+  "currentBatch": 1,
+  "nextBatch": 2,
+  "lastGenerated": "2026-06-25",
+  "nextScheduledRun": "2026-09-22",
+  "batchHistory": [
+    { "batch": 1, "generated": "2026-06-25", "days": "1-90", "reels": 180, "outputFolder": "batch-1" }
+  ]
+}

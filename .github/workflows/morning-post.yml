@@ -1,0 +1,62 @@
+name: Morning Post — Reel 1 (8 AM IST)
+
+on:
+  schedule:
+    - cron: '30 2 * * *'   # 2:30 AM UTC = 8:00 AM IST (UTC+5:30)
+  workflow_dispatch:         # allow manual trigger from GitHub UI
+
+concurrency:
+  group: vedalingo-post      # prevent morning + evening running at same time
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # needed to push updated post-state.json
+
+    steps:
+      - name: Checkout repo (with LFS videos)
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: cd automation && npm install
+
+      - name: Write credentials from secrets
+        env:
+          IG_TOKEN:    ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          IG_USER:     ${{ secrets.INSTAGRAM_USER_ID }}
+          YT_ID:       ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YT_SECRET:   ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YT_REFRESH:  ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        run: |
+          node -e "
+          const c = {
+            instagramAccessToken: process.env.IG_TOKEN,
+            instagramUserId:      process.env.IG_USER,
+            youtubeClientId:      process.env.YT_ID,
+            youtubeClientSecret:  process.env.YT_SECRET,
+            youtubeRefreshToken:  process.env.YT_REFRESH
+          };
+          require('fs').writeFileSync('automation/credentials.json', JSON.stringify(c, null, 2));
+          console.log('Credentials written.');
+          "
+
+      - name: Post Reel 1 (morning)
+        run: cd automation && node daily-post.js morning
+
+      - name: Save updated post-state to repo
+        run: |
+          git config user.name  "VedaLingo Bot"
+          git config user.email "rachna.lende@gmail.com"
+          git add automation/post-state.json
+          git diff --staged --quiet || git commit -m "chore: update post state after morning post [skip ci]"
+          git push
