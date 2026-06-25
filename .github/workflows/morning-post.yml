@@ -58,11 +58,16 @@ jobs:
           TYPE="${{ steps.reel.outputs.type }}"
           CONTENT_ID="${{ steps.reel.outputs.contentId }}"
           DAY="${{ steps.reel.outputs.day }}"
-          CAPTION=$(node -e "
-            const {generateCaption} = require('./automation/lib/captions.js');
-            process.stdout.write(generateCaption('$TYPE', '$CONTENT_ID', $DAY, 'morning').replace(/\n/g,' '));
-          ")
+          # Build caption based on type
+          if [ "$TYPE" = "word" ]; then
+            CAPTION="✨ Sanskrit Word of the Day | VedaLingo #$DAY #VedaLingo #Sanskrit #SanskritLearning #LearnSanskrit #IndianHeritage"
+          elif [ "$TYPE" = "grammar" ]; then
+            CAPTION="📚 Sanskrit Grammar Made Easy | VedaLingo #$DAY #VedaLingo #Sanskrit #SanskritGrammar #LearnSanskrit"
+          else
+            CAPTION="🌸 Story from Ancient India | VedaLingo #$DAY #VedaLingo #Sanskrit #IndianMythology #AncientWisdom"
+          fi
           echo "caption=$CAPTION" >> $GITHUB_OUTPUT
+          echo "Caption: $CAPTION"
 
       - name: Upload video to GitHub release (public URL for Make)
         id: upload
