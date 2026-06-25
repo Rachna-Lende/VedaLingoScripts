@@ -57,13 +57,9 @@ jobs:
         run: |
           chmod +x automation/generate-caption.sh
           DAY_OFFSET=$(( ${{ steps.reel.outputs.day }} + 2 ))
-          CAPTION=$(bash automation/generate-caption.sh "${{ steps.reel.outputs.type }}" "${{ steps.reel.outputs.contentId }}" "$DAY_OFFSET")
-          {
-            echo "caption<<EOF_CAPTION"
-            echo "$CAPTION"
-            echo "EOF_CAPTION"
-          } >> $GITHUB_OUTPUT
-          echo "Caption: $CAPTION"
+          bash automation/generate-caption.sh "${{ steps.reel.outputs.type }}" "${{ steps.reel.outputs.contentId }}" "$DAY_OFFSET" > /tmp/caption.txt
+          echo "Caption saved to /tmp/caption.txt"
+          cat /tmp/caption.txt
 
       - name: Upload video to Cloudinary (permanent public URL)
         id: upload
@@ -83,9 +79,20 @@ jobs:
 
       - name: Send to Make webhook (posts to Instagram)
         run: |
-          curl -s -X POST "${{ secrets.MAKE_INSTAGRAM_WEBHOOK }}" \
-            -H "Content-Type: application/json" \
-            -d "{\"video_url\":\"${{ steps.upload.outputs.url }}\",\"caption\":\"${{ steps.caption.outputs.caption }}\",\"day\":${{ steps.reel.outputs.day }},\"reel\":\"R2\",\"type\":\"${{ steps.reel.outputs.type }}\"}"
+          python3 - <<'PYEOF'
+          import urllib.request, json
+          caption = open('/tmp/caption.txt').read().strip()
+          payload = json.dumps({
+            'video_url': '${{ steps.upload.outputs.url }}',
+            'caption': caption,
+            'day': ${{ steps.reel.outputs.day }},
+            'reel': 'R2',
+            'type': '${{ steps.reel.outputs.type }}'
+          })
+          req = urllib.request.Request('${{ secrets.MAKE_INSTAGRAM_WEBHOOK }}', data=payload.encode(), headers={'Content-Type': 'application/json'})
+          resp = urllib.request.urlopen(req)
+          print('Webhook sent:', resp.status)
+          PYEOF
 
       - name: Advance to next day + save state
         run: |
