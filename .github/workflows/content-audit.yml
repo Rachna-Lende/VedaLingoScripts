@@ -1,8 +1,6 @@
 name: Daily Content Audit + Fix + Deploy (6:30 AM IST)
 
 on:
-  schedule:
-    - cron: '0 1 * * *'    # 6:30 AM IST
   workflow_dispatch:
 
 jobs:
