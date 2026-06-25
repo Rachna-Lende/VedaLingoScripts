@@ -61,16 +61,24 @@ jobs:
           echo "Caption saved to /tmp/caption.txt"
           cat /tmp/caption.txt
 
+      - name: Install ffmpeg
+        run: sudo apt-get install -y ffmpeg
+
+      - name: Transcode video for YouTube compatibility
+        run: |
+          FILE="${{ steps.reel.outputs.file }}"
+          ffmpeg -i "$FILE" -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k -movflags +faststart /tmp/reel_transcode.mp4
+          echo "Transcode complete"
+
       - name: Upload video to Cloudinary (permanent public URL)
         id: upload
         run: |
-          FILE="${{ steps.reel.outputs.file }}"
           DAY="${{ steps.reel.outputs.day }}"
           DAY_PAD=$(printf "%03d" $DAY)
           PUBLIC_ID="vedalingo/day${DAY_PAD}_R2_$(date +%s)"
           RESPONSE=$(curl -s -X POST \
             "https://api.cloudinary.com/v1_1/${{ secrets.CLOUDINARY_CLOUD_NAME }}/video/upload" \
-            -F "file=@$FILE" \
+            -F "file=@/tmp/reel_transcode.mp4" \
             -F "upload_preset=vedalingo_reels" \
             -F "public_id=$PUBLIC_ID")
           VIDEO_URL=$(echo $RESPONSE | python3 -c "import sys,json; print(json.load(sys.stdin)['secure_url'])")
