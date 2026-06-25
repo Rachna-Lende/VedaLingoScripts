@@ -3,17 +3,17 @@ name: Morning Post — Reel 1 (8 AM IST)
 on:
   schedule:
     - cron: '30 2 * * *'   # 2:30 AM UTC = 8:00 AM IST (UTC+5:30)
-  workflow_dispatch:         # allow manual trigger from GitHub UI
+  workflow_dispatch:
 
 concurrency:
-  group: vedalingo-post      # prevent morning + evening running at same time
+  group: vedalingo-post
   cancel-in-progress: false
 
 jobs:
   post:
     runs-on: ubuntu-latest
     permissions:
-      contents: write        # needed to push updated post-state.json
+      contents: write
 
     steps:
       - name: Checkout repo (with LFS videos)
@@ -30,28 +30,65 @@ jobs:
       - name: Install dependencies
         run: cd automation && npm install
 
-      - name: Write credentials from secrets
-        env:
-          IG_TOKEN:    ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
-          IG_USER:     ${{ secrets.INSTAGRAM_USER_ID }}
-          YT_ID:       ${{ secrets.YOUTUBE_CLIENT_ID }}
-          YT_SECRET:   ${{ secrets.YOUTUBE_CLIENT_SECRET }}
-          YT_REFRESH:  ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      - name: Get today's reel info
+        id: reel
         run: |
           node -e "
-          const c = {
-            instagramAccessToken: process.env.IG_TOKEN,
-            instagramUserId:      process.env.IG_USER,
-            youtubeClientId:      process.env.YT_ID,
-            youtubeClientSecret:  process.env.YT_SECRET,
-            youtubeRefreshToken:  process.env.YT_REFRESH
-          };
-          require('fs').writeFileSync('automation/credentials.json', JSON.stringify(c, null, 2));
-          console.log('Credentials written.');
+          const fs = require('fs');
+          const state = JSON.parse(fs.readFileSync('automation/post-state.json', 'utf8'));
+          const day = String(state.currentDay).padStart(3, '0');
+          const batch = state.currentBatch || 1;
+          const folder = batch === 1 ? 'output' : 'output/batch-' + batch;
+          const dayFolder = folder + '/day-' + day;
+          const files = fs.readdirSync(dayFolder).filter(f => f.includes('_R1_'));
+          const file = files[0];
+          const match = file.match(/_([^_]+)_([^.]+)\.mp4/);
+          const type = match[1];
+          const contentId = match[2];
+          require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'day=' + state.currentDay + '\n');
+          require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'file=' + dayFolder + '/' + file + '\n');
+          require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'type=' + type + '\n');
+          require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'contentId=' + contentId + '\n');
+          console.log('Day:', state.currentDay, 'File:', file);
           "
 
-      - name: Post Reel 1 (morning)
-        run: cd automation && node daily-post.js morning
+      - name: Generate caption
+        id: caption
+        run: |
+          node -e "
+          const { generateCaption } = require('./automation/lib/captions.js');
+          const type = '${{ steps.reel.outputs.type }}';
+          const contentId = '${{ steps.reel.outputs.contentId }}';
+          const day = ${{ steps.reel.outputs.day }};
+          const caption = generateCaption(type, contentId, day, 'morning');
+          require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'caption=' + caption.replace(/\n/g, '\\n') + '\n');
+          "
+
+      - name: Upload video to GitHub release (public URL for Make)
+        id: upload
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FILE="${{ steps.reel.outputs.file }}"
+          FILENAME=$(basename "$FILE")
+          # Create/update a release to host the video publicly
+          gh release create daily-reel --title "Daily Reel" --notes "Auto-uploaded" 2>/dev/null || true
+          gh release upload daily-reel "$FILE" --clobber
+          URL="https://github.com/${{ github.repository }}/releases/download/daily-reel/$FILENAME"
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "Video URL: $URL"
+
+      - name: Send to Make webhook (posts to Instagram)
+        run: |
+          curl -X POST "${{ secrets.MAKE_INSTAGRAM_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"video_url\": \"${{ steps.upload.outputs.url }}\",
+              \"caption\": \"${{ steps.caption.outputs.caption }}\",
+              \"day\": ${{ steps.reel.outputs.day }},
+              \"reel\": \"R1\",
+              \"type\": \"${{ steps.reel.outputs.type }}\"
+            }"
 
       - name: Save updated post-state to repo
         run: |
