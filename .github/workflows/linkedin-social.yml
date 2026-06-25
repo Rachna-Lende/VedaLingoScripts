@@ -1,4 +1,4 @@
-name: Daily Social Post — LinkedIn + Reddit + Facebook + X (8 AM IST)
+name: Daily Social Post — LinkedIn + Facebook (8 AM IST)
 
 on:
   schedule:
@@ -10,10 +10,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout VedaLingo app (contains marketing scripts)
+      - name: Checkout VedaLingo app
         uses: actions/checkout@v4
         with:
-          repository: Rachna-Lende/VedaLingo   # ← UPDATE if your app repo name is different
+          repository: Rachna-Lende/VedaLingo
           token: ${{ secrets.GH_PAT }}
 
       - name: Setup Node.js
@@ -22,19 +22,11 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install
+        run: cd vac && npm install
 
       - name: Run daily social post
         env:
-          MAKE_API_KEY:           ${{ secrets.MAKE_API_KEY }}
-          LINKEDIN_ACCESS_TOKEN:  ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
-          REDDIT_CLIENT_ID:       ${{ secrets.REDDIT_CLIENT_ID }}
-          REDDIT_CLIENT_SECRET:   ${{ secrets.REDDIT_CLIENT_SECRET }}
-          REDDIT_REFRESH_TOKEN:   ${{ secrets.REDDIT_REFRESH_TOKEN }}
-          FACEBOOK_PAGE_TOKEN:    ${{ secrets.FACEBOOK_PAGE_TOKEN }}
-          FACEBOOK_PAGE_ID:       ${{ secrets.FACEBOOK_PAGE_ID }}
-          TWITTER_API_KEY:        ${{ secrets.TWITTER_API_KEY }}
-          TWITTER_API_SECRET:     ${{ secrets.TWITTER_API_SECRET }}
-          TWITTER_ACCESS_TOKEN:   ${{ secrets.TWITTER_ACCESS_TOKEN }}
-          TWITTER_ACCESS_SECRET:  ${{ secrets.TWITTER_ACCESS_SECRET }}
+          LINKEDIN_ACCESS_TOKEN:    ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+          FACEBOOK_PAGE_ID:         ${{ secrets.FACEBOOK_PAGE_ID }}
         run: node vac/scripts/marketing/daily-post.mjs
