@@ -78,9 +78,10 @@ jobs:
           FILENAME=$(basename "$FILE")
           gh release create daily-reel --title "Daily Reel" --notes "Auto-uploaded" 2>/dev/null || true
           gh release upload daily-reel "$FILE" --clobber
-          URL="https://github.com/${{ github.repository }}/releases/download/daily-reel/$FILENAME"
-          echo "url=$URL" >> $GITHUB_OUTPUT
-          echo "Video URL: $URL"
+          # Follow redirect to get the direct CDN URL that doesn't expire quickly
+          REDIRECT_URL=$(curl -sI "https://github.com/${{ github.repository }}/releases/download/daily-reel/$FILENAME" | grep -i "^location:" | tr -d '\r' | awk '{print $2}')
+          echo "url=$REDIRECT_URL" >> $GITHUB_OUTPUT
+          echo "Video URL: $REDIRECT_URL"
 
       - name: Send to Make webhook (posts to Instagram)
         run: |
