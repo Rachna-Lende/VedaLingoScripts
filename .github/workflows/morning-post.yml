@@ -33,36 +33,45 @@ jobs:
       - name: Get today's reel info
         id: reel
         run: |
-          node -e "
+          node << 'EOF'
           const fs = require('fs');
           const state = JSON.parse(fs.readFileSync('automation/post-state.json', 'utf8'));
           const day = String(state.currentDay).padStart(3, '0');
           const batch = state.currentBatch || 1;
           const folder = batch === 1 ? 'output' : 'output/batch-' + batch;
           const dayFolder = folder + '/day-' + day;
+          console.log('Looking in:', dayFolder);
           const files = fs.readdirSync(dayFolder).filter(f => f.includes('_R1_'));
           const file = files[0];
-          const match = file.match(/_([^_]+)_([^.]+)\.mp4/);
+          console.log('Found file:', file);
+          const match = file.match(/Day\d+_R\d+_([^_]+)_(.+)\.mp4/);
           const type = match[1];
           const contentId = match[2];
-          require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'day=' + state.currentDay + '\n');
-          require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'file=' + dayFolder + '/' + file + '\n');
-          require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'type=' + type + '\n');
-          require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'contentId=' + contentId + '\n');
-          console.log('Day:', state.currentDay, 'File:', file);
-          "
+          const out = process.env.GITHUB_OUTPUT;
+          fs.appendFileSync(out, 'day=' + state.currentDay + '\n');
+          fs.appendFileSync(out, 'file=' + dayFolder + '/' + file + '\n');
+          fs.appendFileSync(out, 'type=' + type + '\n');
+          fs.appendFileSync(out, 'contentId=' + contentId + '\n');
+          console.log('Day:', state.currentDay, 'Type:', type, 'ContentId:', contentId);
+          EOF
 
       - name: Generate caption
         id: caption
+        env:
+          REEL_TYPE: ${{ steps.reel.outputs.type }}
+          REEL_CONTENT_ID: ${{ steps.reel.outputs.contentId }}
+          REEL_DAY: ${{ steps.reel.outputs.day }}
         run: |
-          node -e "
+          node << 'EOF'
           const { generateCaption } = require('./automation/lib/captions.js');
-          const type = '${{ steps.reel.outputs.type }}';
-          const contentId = '${{ steps.reel.outputs.contentId }}';
-          const day = ${{ steps.reel.outputs.day }};
+          const type = process.env.REEL_TYPE;
+          const contentId = process.env.REEL_CONTENT_ID;
+          const day = parseInt(process.env.REEL_DAY);
           const caption = generateCaption(type, contentId, day, 'morning');
-          require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'caption=' + caption.replace(/\n/g, '\\n') + '\n');
-          "
+          const fs = require('fs');
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, 'caption=' + caption.replace(/\n/g, ' ') + '\n');
+          console.log('Caption generated for', type, contentId);
+          EOF
 
       - name: Upload video to GitHub release (public URL for Make)
         id: upload
