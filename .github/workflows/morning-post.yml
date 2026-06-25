@@ -52,10 +52,10 @@ jobs:
           echo "contentId=$CONTENT_ID" >> $GITHUB_OUTPUT
           echo "Day: $CURRENT_DAY, File: $FILENAME, Type: $TYPE"
 
-      - name: Generate caption with Gemini AI
+      - name: Generate caption with Hugging Face AI
         id: caption
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           TYPE="${{ steps.reel.outputs.type }}"
           CONTENT_ID="${{ steps.reel.outputs.contentId }}"
@@ -72,19 +72,26 @@ jobs:
           CAPTION=$(python3 -c "
           import urllib.request, json, os, sys
           prompt = '''$PROMPT'''
-          api_key = os.environ['GEMINI_API_KEY']
-          url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + api_key
           payload = json.dumps({
-            'contents': [{'parts': [{'text': prompt}]}],
-            'generationConfig': {'maxOutputTokens': 400, 'temperature': 0.7}
+            'model': 'meta-llama/Llama-3.1-8B-Instruct',
+            'messages': [{'role': 'user', 'content': prompt}],
+            'max_tokens': 400,
+            'temperature': 0.7
           }).encode()
-          req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'})
+          req = urllib.request.Request(
+            'https://router.huggingface.co/novita/v3/openai/chat/completions',
+            data=payload,
+            headers={
+              'Authorization': 'Bearer ' + os.environ['HF_TOKEN'],
+              'Content-Type': 'application/json'
+            }
+          )
           try:
             resp = json.loads(urllib.request.urlopen(req).read())
-            print(resp['candidates'][0]['content']['parts'][0]['text'].strip())
+            print(resp['choices'][0]['message']['content'].strip())
           except urllib.error.HTTPError as e:
             body = e.read().decode()
-            sys.stderr.write('Gemini error ' + str(e.code) + ': ' + body + '\n')
+            sys.stderr.write('HF error ' + str(e.code) + ': ' + body + '\n')
             sys.exit(1)
           ")
 
