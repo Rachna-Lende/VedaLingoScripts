@@ -33,45 +33,36 @@ jobs:
       - name: Get today's reel info
         id: reel
         run: |
-          node << 'EOF'
-          const fs = require('fs');
-          const state = JSON.parse(fs.readFileSync('automation/post-state.json', 'utf8'));
-          const day = String(state.currentDay).padStart(3, '0');
-          const batch = state.currentBatch || 1;
-          const folder = batch === 1 ? 'output' : 'output/batch-' + batch;
-          const dayFolder = folder + '/day-' + day;
-          console.log('Looking in:', dayFolder);
-          const files = fs.readdirSync(dayFolder).filter(f => f.includes('_R2_'));
-          const file = files[0];
-          console.log('Found file:', file);
-          const match = file.match(/Day\d+_R\d+_([^_]+)_(.+)\.mp4/);
-          const type = match[1];
-          const contentId = match[2];
-          const out = process.env.GITHUB_OUTPUT;
-          fs.appendFileSync(out, 'day=' + state.currentDay + '\n');
-          fs.appendFileSync(out, 'file=' + dayFolder + '/' + file + '\n');
-          fs.appendFileSync(out, 'type=' + type + '\n');
-          fs.appendFileSync(out, 'contentId=' + contentId + '\n');
-          console.log('Day:', state.currentDay, 'Type:', type, 'ContentId:', contentId);
-          EOF
+          STATE=$(cat automation/post-state.json)
+          CURRENT_DAY=$(echo $STATE | python3 -c "import sys,json; print(json.load(sys.stdin)['currentDay'])")
+          CURRENT_BATCH=$(echo $STATE | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('currentBatch',1))")
+          DAY_PAD=$(printf "%03d" $CURRENT_DAY)
+          if [ "$CURRENT_BATCH" = "1" ]; then
+            DAY_FOLDER="output/day-${DAY_PAD}"
+          else
+            DAY_FOLDER="output/batch-${CURRENT_BATCH}/day-${DAY_PAD}"
+          fi
+          FILE=$(ls ${DAY_FOLDER}/*_R2_*.mp4 | head -1)
+          FILENAME=$(basename "$FILE")
+          TYPE=$(echo "$FILENAME" | sed 's/Day[0-9]*_R[0-9]*_\([^_]*\)_.*/\1/')
+          CONTENT_ID=$(echo "$FILENAME" | sed 's/Day[0-9]*_R[0-9]*_[^_]*_\(.*\)\.mp4/\1/')
+          echo "day=$CURRENT_DAY" >> $GITHUB_OUTPUT
+          echo "file=$FILE" >> $GITHUB_OUTPUT
+          echo "type=$TYPE" >> $GITHUB_OUTPUT
+          echo "contentId=$CONTENT_ID" >> $GITHUB_OUTPUT
+          echo "Day: $CURRENT_DAY, File: $FILENAME, Type: $TYPE"
 
       - name: Generate caption
         id: caption
-        env:
-          REEL_TYPE: ${{ steps.reel.outputs.type }}
-          REEL_CONTENT_ID: ${{ steps.reel.outputs.contentId }}
-          REEL_DAY: ${{ steps.reel.outputs.day }}
         run: |
-          node << 'EOF'
-          const { generateCaption } = require('./automation/lib/captions.js');
-          const type = process.env.REEL_TYPE;
-          const contentId = process.env.REEL_CONTENT_ID;
-          const day = parseInt(process.env.REEL_DAY);
-          const caption = generateCaption(type, contentId, day, 'evening');
-          const fs = require('fs');
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, 'caption=' + caption.replace(/\n/g, ' ') + '\n');
-          console.log('Caption generated for', type, contentId);
-          EOF
+          TYPE="${{ steps.reel.outputs.type }}"
+          CONTENT_ID="${{ steps.reel.outputs.contentId }}"
+          DAY="${{ steps.reel.outputs.day }}"
+          CAPTION=$(node -e "
+            const {generateCaption} = require('./automation/lib/captions.js');
+            process.stdout.write(generateCaption('$TYPE', '$CONTENT_ID', $DAY, 'evening').replace(/\n/g,' '));
+          ")
+          echo "caption=$CAPTION" >> $GITHUB_OUTPUT
 
       - name: Upload video to GitHub release (public URL for Make)
         id: upload
@@ -88,21 +79,25 @@ jobs:
 
       - name: Send to Make webhook (posts to Instagram)
         run: |
-          curl -X POST "${{ secrets.MAKE_INSTAGRAM_WEBHOOK }}" \
+          curl -s -X POST "${{ secrets.MAKE_INSTAGRAM_WEBHOOK }}" \
             -H "Content-Type: application/json" \
-            -d "{\"video_url\": \"${{ steps.upload.outputs.url }}\", \"caption\": \"${{ steps.caption.outputs.caption }}\", \"day\": ${{ steps.reel.outputs.day }}, \"reel\": \"R2\", \"type\": \"${{ steps.reel.outputs.type }}\"}"
+            -d "{\"video_url\":\"${{ steps.upload.outputs.url }}\",\"caption\":\"${{ steps.caption.outputs.caption }}\",\"day\":${{ steps.reel.outputs.day }},\"reel\":\"R2\",\"type\":\"${{ steps.reel.outputs.type }}\"}"
 
       - name: Advance to next day + save state
         run: |
-          node << 'EOF'
-          const fs = require('fs');
-          const state = JSON.parse(fs.readFileSync('automation/post-state.json', 'utf8'));
-          state.currentDay = (state.currentDay % 90) + 1;
-          if (state.currentDay === 1) state.currentBatch = (state.currentBatch || 1) + 1;
-          state.lastPosted = new Date().toISOString().split('T')[0];
-          fs.writeFileSync('automation/post-state.json', JSON.stringify(state, null, 2));
-          console.log('Advanced to day', state.currentDay);
-          EOF
+          python3 -c "
+          import json
+          with open('automation/post-state.json') as f:
+              state = json.load(f)
+          state['currentDay'] = (state['currentDay'] % 90) + 1
+          if state['currentDay'] == 1:
+              state['currentBatch'] = state.get('currentBatch', 1) + 1
+          import datetime
+          state['lastPosted'] = datetime.date.today().isoformat()
+          with open('automation/post-state.json', 'w') as f:
+              json.dump(state, f, indent=2)
+          print('Advanced to day', state['currentDay'])
+          "
           git config user.name  "VedaLingo Bot"
           git config user.email "rachna.lende@gmail.com"
           git add automation/post-state.json
