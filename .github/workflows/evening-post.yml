@@ -128,4 +128,4 @@ jobs:
           git config user.email "rachna.lende@gmail.com"
           git add automation/post-state.json
           git diff --staged --quiet || git commit -m "chore: advance to next day after evening post [skip ci]"
-          git push
+          git pull --rebase && git push
