@@ -18,7 +18,7 @@ One word. Thousands of years of wisdom packed inside it.
 
 Most people go their whole lives without knowing this concept exists — watch this reel and you'll never unsee it.
 
-📲 vedalingo.in | Learn Sanskrit, one word at a time
+📲 vedalingo.in | 📱 Download free on Google Play → https://play.google.com/store/apps/details?id=com.vedalingo.app
 
 #yoga #meditation #spirituality #ancientwisdom #vedanta #sanskritquotes #hinduism #mindfulness #VedaLingo #LearnSanskrit
 CAPTION
@@ -30,7 +30,7 @@ This Sanskrit word doesn't just have a meaning — it holds a whole way of seein
 
 Ancient sages built their lives around this concept. Watch to find out why.
 
-📲 vedalingo.in
+📲 vedalingo.in | 📱 Download free → https://play.google.com/store/apps/details?id=com.vedalingo.app
 
 #yoga #spirituality #mindfulness #bhagavadgita #vedanta #ancientwisdom #hinduism #sanskritquotes #VedaLingo #LearnSanskrit
 CAPTION
@@ -42,7 +42,7 @@ Sanskrit had a name for experiences we struggle to describe in English.
 
 This is why ancient languages matter. Watch 👆
 
-📲 Learn more at vedalingo.in
+📲 vedalingo.in | 📱 Download free → https://play.google.com/store/apps/details?id=com.vedalingo.app
 
 #spirituality #yoga #meditation #ancientwisdom #hinduism #vedanta #bhagavadgita #sanskritquotes #VedaLingo #LearnSanskrit
 CAPTION
@@ -54,7 +54,7 @@ It's Sanskrit. It's 3000+ years old. And it might be the most useful concept you
 
 VedaLingo makes ancient wisdom accessible — one word at a time.
 
-📲 vedalingo.in
+📲 vedalingo.in | 📱 Download free → https://play.google.com/store/apps/details?id=com.vedalingo.app
 
 #yoga #meditation #spirituality #upanishads #vedanta #ancientwisdom #hinduism #bhagavadgita #VedaLingo #LearnSanskrit
 CAPTION
@@ -69,7 +69,7 @@ Most people think Sanskrit grammar is impossible. It's not — when you learn it
 
 Today's concept: $WORD. Watch how simple it actually is.
 
-📲 vedalingo.in
+📲 vedalingo.in | 📱 Download free → https://play.google.com/store/apps/details?id=com.vedalingo.app
 
 #languagelearning #polyglot #linguistics #learnlanguages #sanskrit #ancientlanguage #indialanguage #VedaLingo #LearnSanskrit #language
 CAPTION
@@ -81,7 +81,7 @@ The rule '$WORD' is why Sanskrit is called the most perfectly structured languag
 
 Once you see it, you can't unsee it. Watch 👆
 
-📲 vedalingo.in
+📲 vedalingo.in | 📱 Download free → https://play.google.com/store/apps/details?id=com.vedalingo.app
 
 #languagelearning #polyglot #sanskrit #linguistics #ancientlanguage #learnlanguages #indialanguage #VedaLingo #LearnSanskrit #language
 CAPTION
@@ -93,7 +93,7 @@ Why Sanskrit grammar is actually beautiful 🌸
 
 Learn the language of the Vedas, one concept at a time.
 
-📲 vedalingo.in
+📲 vedalingo.in | 📱 Download free → https://play.google.com/store/apps/details?id=com.vedalingo.app
 
 #languagelearning #sanskrit #polyglot #vedas #linguistics #ancientlanguage #indialanguage #VedaLingo #LearnSanskrit #classicallanguage
 CAPTION
@@ -105,7 +105,7 @@ This Sanskrit grammar concept is used in the Bhagavad Gita, the Ramayana, the Up
 
 Now you'll recognise it every time. Watch 👆
 
-📲 vedalingo.in
+📲 vedalingo.in | 📱 Download free → https://play.google.com/store/apps/details?id=com.vedalingo.app
 
 #languagelearning #polyglot #sanskrit #bhagavadgita #upanishads #ramayana #ancientlanguage #VedaLingo #LearnSanskrit #linguistics
 CAPTION
@@ -120,7 +120,7 @@ This story from ancient India will stay with you 🔥
 
 The Mahabharata knew. Watch to find out.
 
-📲 vedalingo.in
+📲 vedalingo.in | 📱 Download free → https://play.google.com/store/apps/details?id=com.vedalingo.app
 
 #hinduism #hindumythology #mythology #mahabharata #ancientwisdom #india #spirituality #indiastories #VedaLingo #LearnSanskrit
 CAPTION
@@ -132,7 +132,7 @@ The story of $WORD is one of the most powerful in all of Indian literature.
 
 You've never heard it told like this. Watch 👆
 
-📲 vedalingo.in
+📲 vedalingo.in | 📱 Download free → https://play.google.com/store/apps/details?id=com.vedalingo.app
 
 #hinduism #hindumythology #mythology #mahabharata #ramayana #india #ancientindia #spirituality #VedaLingo #LearnSanskrit
 CAPTION
@@ -144,7 +144,7 @@ The lesson in this ancient story hits different 💫
 
 Our ancestors were wise beyond measure. 🙏
 
-📲 vedalingo.in
+📲 vedalingo.in | 📱 Download free → https://play.google.com/store/apps/details?id=com.vedalingo.app
 
 #hinduism #hindumythology #mythology #ancientwisdom #india #spirituality #mahabharata #storytelling #VedaLingo #LearnSanskrit
 CAPTION
@@ -156,7 +156,7 @@ If you know this story, you know India 🇮🇳
 
 Watch before you scroll past. 🙏
 
-📲 vedalingo.in
+📲 vedalingo.in | 📱 Download free → https://play.google.com/store/apps/details?id=com.vedalingo.app
 
 #hinduism #hindumythology #mythology #india #ancientindia #mahabharata #ramayana #ancientwisdom #VedaLingo #LearnSanskrit
 CAPTION
