@@ -16,41 +16,33 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout repo (with LFS videos)
+      - name: Checkout repo (no LFS)
         uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install dependencies
-        run: cd automation && npm install
-
-      - name: Get today's reel info
+      - name: Get today's reel info from manifest
         id: reel
         run: |
           STATE=$(cat automation/post-state.json)
           CURRENT_DAY=$(echo $STATE | python3 -c "import sys,json; print(json.load(sys.stdin)['currentDay'])")
-          CURRENT_BATCH=$(echo $STATE | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('currentBatch',1))")
           DAY_PAD=$(printf "%03d" $CURRENT_DAY)
-          if [ "$CURRENT_BATCH" = "1" ]; then
-            DAY_FOLDER="output/day-${DAY_PAD}"
-          else
-            DAY_FOLDER="output/batch-${CURRENT_BATCH}/day-${DAY_PAD}"
+          KEY="day${DAY_PAD}_R1"
+          VIDEO_URL=$(python3 -c "import json; m=json.load(open('cloudinary-manifest.json')); print(m.get('${KEY}',''))")
+          if [ -z "$VIDEO_URL" ]; then
+            echo "❌ No manifest entry for ${KEY} — run upload-to-cloudinary.mjs locally first"
+            exit 1
           fi
-          FILE=$(ls ${DAY_FOLDER}/*_R1_*.mp4 | head -1)
-          FILENAME=$(basename "$FILE")
-          TYPE=$(echo "$FILENAME" | sed 's/Day[0-9]*_R[0-9]*_\([^_]*\)_.*/\1/')
-          CONTENT_ID=$(echo "$FILENAME" | sed 's/Day[0-9]*_R[0-9]*_[^_]*_\(.*\)\.mp4/\1/')
+          # Derive type and contentId from manifest key or filename pattern in manifest
+          FILENAME=$(basename "$VIDEO_URL" | sed 's/_[0-9]*\.mp4/.mp4/')
+          TYPE=$(echo "$FILENAME" | sed 's/day[0-9]*_R[0-9]*_\([^_]*\)_.*/\1/')
+          CONTENT_ID=$(echo "$FILENAME" | sed 's/day[0-9]*_R[0-9]*_[^_]*_\(.*\)\.[0-9]*.mp4/\1/' | sed 's/_[0-9]*$//')
           echo "day=$CURRENT_DAY" >> $GITHUB_OUTPUT
-          echo "file=$FILE" >> $GITHUB_OUTPUT
+          echo "url=$VIDEO_URL" >> $GITHUB_OUTPUT
           echo "type=$TYPE" >> $GITHUB_OUTPUT
           echo "contentId=$CONTENT_ID" >> $GITHUB_OUTPUT
-          echo "Day: $CURRENT_DAY, File: $FILENAME, Type: $TYPE"
+          echo "Day: $CURRENT_DAY, URL: $VIDEO_URL, Type: $TYPE, ContentId: $CONTENT_ID"
 
       - name: Generate caption
         id: caption
@@ -60,31 +52,6 @@ jobs:
           echo "Caption saved to /tmp/caption.txt"
           cat /tmp/caption.txt
 
-      - name: Install ffmpeg
-        run: sudo apt-get install -y ffmpeg
-
-      - name: Transcode video for YouTube compatibility
-        run: |
-          FILE="${{ steps.reel.outputs.file }}"
-          ffmpeg -i "$FILE" -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k -movflags +faststart /tmp/reel_transcode.mp4
-          echo "Transcode complete"
-
-      - name: Upload video to Cloudinary (permanent public URL)
-        id: upload
-        run: |
-          DAY="${{ steps.reel.outputs.day }}"
-          DAY_PAD=$(printf "%03d" $DAY)
-          PUBLIC_ID="vedalingo/day${DAY_PAD}_R1_$(date +%s)"
-          RESPONSE=$(curl -s -X POST \
-            "https://api.cloudinary.com/v1_1/${{ secrets.CLOUDINARY_CLOUD_NAME }}/video/upload" \
-            -F "file=@/tmp/reel_transcode.mp4" \
-            -F "upload_preset=vedalingo_reels" \
-            -F "public_id=$PUBLIC_ID")
-          echo "Cloudinary response: $RESPONSE"
-          VIDEO_URL=$(echo $RESPONSE | python3 -c "import sys,json; print(json.load(sys.stdin)['secure_url'])")
-          echo "url=$VIDEO_URL" >> $GITHUB_OUTPUT
-          echo "Video URL: $VIDEO_URL"
-
       - name: Send to Make webhook (posts to Instagram + YouTube)
         run: |
           python3 - <<'PYEOF'
@@ -93,10 +60,11 @@ jobs:
           day = ${{ steps.reel.outputs.day }}
           content_type = '${{ steps.reel.outputs.type }}'
           content_id = '${{ steps.reel.outputs.contentId }}'
+          video_url = '${{ steps.reel.outputs.url }}'
           word = content_id.replace('-', ' ').title()
           title = f'Sanskrit {content_type.title()}: {word} | VedaLingo #{day}'[:100]
           payload = json.dumps({
-            'video_url': '${{ steps.upload.outputs.url }}',
+            'video_url': video_url,
             'caption': caption,
             'title': title,
             'filename': f'day{day:03d}_R1_{content_id}.mp4',
