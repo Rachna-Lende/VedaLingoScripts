@@ -22,59 +22,66 @@ jobs:
           lfs: false
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get today's reel info from manifest
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Get today's reel info
         id: reel
         run: |
-          STATE=$(cat automation/post-state.json)
-          CURRENT_DAY=$(echo $STATE | python3 -c "import sys,json; print(json.load(sys.stdin)['currentDay'])")
+          CURRENT_DAY=$(node -e "console.log(require('./automation/post-state.json').currentDay)")
           DAY_PAD=$(printf "%03d" $CURRENT_DAY)
           KEY="day${DAY_PAD}_R2"
-          VIDEO_URL=$(python3 -c "import json; m=json.load(open('cloudinary-manifest.json')); print(m.get('${KEY}',''))")
+          VIDEO_URL=$(node -e "const m=require('./cloudinary-manifest.json'); console.log(m['${KEY}']||'')")
           if [ -z "$VIDEO_URL" ]; then
             echo "❌ No manifest entry for ${KEY} — run upload-to-cloudinary.mjs locally first"
             exit 1
           fi
-          FILENAME=$(basename "$VIDEO_URL" | sed 's/_[0-9]*\.mp4/.mp4/')
-          TYPE=$(echo "$FILENAME" | sed 's/day[0-9]*_R[0-9]*_\([^_]*\)_.*/\1/')
-          CONTENT_ID=$(echo "$FILENAME" | sed 's/day[0-9]*_R[0-9]*_[^_]*_\(.*\)\.[0-9]*.mp4/\1/' | sed 's/_[0-9]*$//')
+          INFO=$(node automation/get-reel-info.js $CURRENT_DAY 2)
+          TYPE=$(echo $INFO | node -e "process.stdin.resume();let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).type))")
+          CONTENT_ID=$(echo $INFO | node -e "process.stdin.resume();let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).contentId))")
+          echo $INFO > /tmp/reel-info.json
           echo "day=$CURRENT_DAY" >> $GITHUB_OUTPUT
           echo "url=$VIDEO_URL" >> $GITHUB_OUTPUT
           echo "type=$TYPE" >> $GITHUB_OUTPUT
           echo "contentId=$CONTENT_ID" >> $GITHUB_OUTPUT
-          echo "Day: $CURRENT_DAY, URL: $VIDEO_URL, Type: $TYPE, ContentId: $CONTENT_ID"
+          echo "Day: $CURRENT_DAY | Type: $TYPE | ContentId: $CONTENT_ID"
 
       - name: Generate caption
         id: caption
         run: |
-          chmod +x automation/generate-caption.sh
-          DAY_OFFSET=$(( ${{ steps.reel.outputs.day }} + 2 ))
-          bash automation/generate-caption.sh "${{ steps.reel.outputs.type }}" "${{ steps.reel.outputs.contentId }}" "$DAY_OFFSET" > /tmp/caption.txt
-          echo "Caption saved to /tmp/caption.txt"
-          cat /tmp/caption.txt
+          node -e "const i=require('/tmp/reel-info.json'); process.stdout.write(i.caption)" > /tmp/caption.txt
+          echo "Caption preview:"; head -3 /tmp/caption.txt
 
       - name: Send to Make webhook (posts to Instagram + YouTube)
         run: |
-          python3 - <<'PYEOF'
-          import urllib.request, json
-          caption = open('/tmp/caption.txt').read().strip()
-          day = ${{ steps.reel.outputs.day }}
-          content_type = '${{ steps.reel.outputs.type }}'
-          content_id = '${{ steps.reel.outputs.contentId }}'
-          word = content_id.replace('-', ' ').title()
-          title = f'Sanskrit {content_type.title()}: {word} | VedaLingo #{day}'[:100]
-          payload = json.dumps({
-            'video_url': '${{ steps.reel.outputs.url }}',
-            'caption': caption,
-            'title': title,
-            'filename': f'day{day:03d}_R2_{content_id}.mp4',
-            'day': day,
-            'reel': 'R2',
-            'type': content_type
-          })
-          req = urllib.request.Request('${{ secrets.MAKE_INSTAGRAM_WEBHOOK }}', data=payload.encode(), headers={'Content-Type': 'application/json'})
-          resp = urllib.request.urlopen(req)
-          print('Webhook sent:', resp.status)
-          PYEOF
+          node - <<'JSEOF'
+          const fs = require('fs');
+          const https = require('https');
+          const info = JSON.parse(fs.readFileSync('/tmp/reel-info.json', 'utf8'));
+          const caption = fs.readFileSync('/tmp/caption.txt', 'utf8').trim();
+          const day = parseInt(process.env.DAY);
+          const videoUrl = process.env.VIDEO_URL;
+          const payload = JSON.stringify({
+            video_url: videoUrl,
+            caption,
+            title: info.ytTitle,
+            filename: `day${String(day).padStart(3,'0')}_R2_${info.contentId}.mp4`,
+            day,
+            reel: 'R2',
+            type: info.type,
+          });
+          const url = new URL(process.env.WEBHOOK_URL);
+          const req = https.request({ hostname: url.hostname, path: url.pathname + url.search, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) } }, res => {
+            console.log('Webhook sent:', res.statusCode);
+          });
+          req.write(payload); req.end();
+          JSEOF
+        env:
+          DAY: ${{ steps.reel.outputs.day }}
+          VIDEO_URL: ${{ steps.reel.outputs.url }}
+          WEBHOOK_URL: ${{ secrets.MAKE_INSTAGRAM_WEBHOOK }}
 
       - name: Advance to next day + save state
         run: |
