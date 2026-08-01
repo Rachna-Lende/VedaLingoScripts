@@ -1,0 +1,54 @@
+name: Pinterest Daily Pin
+
+on:
+  schedule:
+    - cron: '30 4 * * *'   # 10:00 AM IST daily
+  workflow_dispatch:
+
+jobs:
+  post-pin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: automation
+        run: npm install
+
+      - name: Install canvas dependencies
+        run: sudo apt-get install -y libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+
+      - name: Install canvas npm package
+        working-directory: automation
+        run: npm install canvas cloudinary
+
+      - name: Generate pin image & upload to Cloudinary
+        working-directory: automation
+        id: generate
+        env:
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+        run: |
+          IMAGE_URL=$(node generate-pinterest-pin.mjs | tail -1)
+          echo "image_url=$IMAGE_URL" >> $GITHUB_OUTPUT
+          echo "Day image URL: $IMAGE_URL"
+
+      - name: Read current day
+        id: state
+        run: |
+          DAY=$(node -e "const s=require('./automation/post-state.json'); console.log(s.currentDay)")
+          echo "day=$DAY" >> $GITHUB_OUTPUT
+
+      - name: Post to Pinterest
+        working-directory: automation
+        env:
+          PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
+          PINTEREST_BOARD_ID: ${{ secrets.PINTEREST_BOARD_ID }}
+        run: |
+          node post-to-pinterest.mjs "${{ steps.generate.outputs.image_url }}" "${{ steps.state.outputs.day }}"
