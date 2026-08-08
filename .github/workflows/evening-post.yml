@@ -93,8 +93,8 @@ jobs:
           if next_day == 1:
               replay_until = state.pop('replayUntil', None)
               if replay_until:
-                  next_day = 1  # start replay from day 1
-                  state['_replayEnd'] = replay_until  # remember when to stop
+                  next_day = 1
+                  state['_replayEnd'] = replay_until
               else:
                   state['currentBatch'] = state.get('currentBatch', 1) + 1
           elif state.get('_replayEnd') and state['currentDay'] >= state['_replayEnd']:
@@ -110,9 +110,10 @@ jobs:
           "
           git config user.name  "VedaLingo Bot"
           git config user.email "rachna.lende@gmail.com"
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
           git add automation/post-state.json
           git diff --staged --quiet || git commit -m "chore: advance to next day after evening post [skip ci]"
           git fetch origin
-          git rebase origin/main
-          git push origin HEAD:main
+          git rebase origin/$BRANCH
+          git push origin HEAD:$BRANCH
 
