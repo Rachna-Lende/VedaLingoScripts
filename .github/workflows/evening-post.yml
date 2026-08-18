@@ -110,10 +110,9 @@ jobs:
           "
           git config user.name  "VedaLingo Bot"
           git config user.email "rachna.lende@gmail.com"
-          BRANCH=$(git rev-parse --abbrev-ref HEAD)
           git add automation/post-state.json
           git diff --staged --quiet || git commit -m "chore: advance to next day after evening post [skip ci]"
-          git fetch origin
-          git rebase origin/$BRANCH
-          git push origin HEAD:$BRANCH
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
 
