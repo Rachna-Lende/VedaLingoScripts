@@ -22,7 +22,10 @@ const PIN_CONTENT = [
 ];
 
 async function postPin(imageUrl, title, description, link, boardId, accessToken) {
-  const response = await fetch('https://api.pinterest.com/v5/pins', {
+  const base = process.env.PINTEREST_SANDBOX === 'true'
+    ? 'https://api-sandbox.pinterest.com/v5'
+    : 'https://api.pinterest.com/v5';
+  const response = await fetch(`${base}/pins`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${accessToken}`,

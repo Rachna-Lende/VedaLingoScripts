@@ -50,6 +50,7 @@ jobs:
         env:
           PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
           PINTEREST_BOARD_ID: ${{ secrets.PINTEREST_BOARD_ID }}
+          PINTEREST_SANDBOX: ${{ secrets.PINTEREST_SANDBOX }}
         run: |
           node post-to-pinterest.mjs "${{ steps.generate.outputs.image_url }}" "${{ steps.state.outputs.day }}"
 
