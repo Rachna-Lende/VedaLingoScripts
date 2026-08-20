@@ -78,7 +78,7 @@ ${content.fact}
 Learn Sanskrit words, grammar, stories from the Mahabharata & Ramayana — free on VedaLingo.
 
 🌐 vedalingo.in
-📱 Download free on Google Play
+📱 Download free: https://play.google.com/store/apps/details?id=com.vedalingo.app
 
 #Sanskrit #LearnSanskrit #VedaLingo #SanskritWords #IndianCulture #Vedic #Hinduism #AncientWisdom #SanskritDaily #IndianPhilosophy`;
 
