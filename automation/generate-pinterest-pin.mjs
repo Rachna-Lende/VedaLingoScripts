@@ -1,11 +1,11 @@
 /**
  * VedaLingo Pinterest Pin Generator
- * Creates 1000x1500px aesthetic Sanskrit pins for Pinterest
- * Uploads to Cloudinary, returns URL for Pinterest API
+ * Uses Puppeteer + HTML to render the same dark bg.png + gold-glow aesthetic as the reels
+ * Screenshots at 1000x1500px, uploads to Cloudinary
  */
 
-import { createCanvas } from 'canvas';
-import { writeFileSync, readFileSync } from 'fs';
+import puppeteer from 'puppeteer';
+import { readFileSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { v2 as cloudinary } from 'cloudinary';
@@ -35,268 +35,236 @@ const PIN_CONTENT = [
   { devanagari: 'अग्नि', iast: 'agni', meaning: 'Fire', fact: 'Identical to Latin "ignis" and English "ignite". One of the oldest preserved Indo-European words.', category: 'Etymology' },
   { devanagari: 'वायु', iast: 'vāyu', meaning: 'Wind, air', fact: 'Father of Hanuman in the Ramayana. The breath (prāṇa) is Vāyu within every living being.', category: 'Mythology' },
   { devanagari: 'आनन्द', iast: 'ānanda', meaning: 'Bliss', fact: 'The Taittiriya Upanishad says the ultimate reality is sat-chit-ānanda — being, consciousness, bliss.', category: 'Spirituality' },
+  { devanagari: 'ॐ', iast: 'oṃ', meaning: 'The sacred syllable', fact: 'The Mandukya Upanishad says Om encompasses all of time — past, present, and future.', category: 'Spirituality' },
+  { devanagari: 'चन्द्र', iast: 'candra', meaning: 'The Moon', fact: 'From √cand — to shine. The root of the name "Chandra" and the English word "candle".', category: 'Etymology' },
+  { devanagari: 'गुरु', iast: 'guru', meaning: 'Dispeller of darkness', fact: 'gu = darkness, ru = dispeller. A guru is literally one who leads from darkness to light.', category: 'Wisdom' },
+  { devanagari: 'माया', iast: 'māyā', meaning: 'Illusion', fact: 'The cosmic power that makes the infinite appear finite. The world is māyā — a divine play.', category: 'Philosophy' },
+  { devanagari: 'प्राण', iast: 'prāṇa', meaning: 'Life force', fact: 'The breath that animates all living beings. The Upanishads say prāṇa is older than mind itself.', category: 'Spirituality' },
+  { devanagari: 'कर्म', iast: 'karma', meaning: 'Action & consequence', fact: 'From √kṛ — to do. Every action creates an impression. Karma is the universe keeping score.', category: 'Philosophy' },
+  { devanagari: 'आत्मन्', iast: 'ātman', meaning: 'The self', fact: 'The Chandogya Upanishad declares: tat tvam asi — "That thou art." You are the ātman.', category: 'Philosophy' },
+  { devanagari: 'ब्रह्म', iast: 'brahman', meaning: 'Ultimate reality', fact: 'The infinite, unchanging ground of all existence. Everything arises from brahman and returns to it.', category: 'Philosophy' },
+  { devanagari: 'तपस्', iast: 'tapas', meaning: 'Discipline & austerity', fact: 'From √tap — to burn. Tapas is the inner fire that purifies. The Vedas say creation itself began with tapas.', category: 'Spirituality' },
+  { devanagari: 'श्रद्धा', iast: 'śraddhā', meaning: 'Faith & trust', fact: 'From √śrat + √dhā — to place the heart. Śraddhā is trust rooted in experience, not blind belief.', category: 'Values' },
+  { devanagari: 'अनन्त', iast: 'ananta', meaning: 'Infinite, endless', fact: 'a (not) + anta (end). Ananta is one of Vishnu\'s names. The infinite serpent on which the cosmos rests.', category: 'Mythology' },
+  { devanagari: 'क्षमा', iast: 'kṣamā', meaning: 'Forgiveness', fact: 'The Mahabharata says: forgiveness is the greatest virtue. The strong forgive; the weak cannot.', category: 'Values' },
+  { devanagari: 'सेवा', iast: 'sevā', meaning: 'Selfless service', fact: 'To serve without expectation of return. The Bhagavad Gita calls this the path of karma yoga.', category: 'Values' },
+  { devanagari: 'विश्व', iast: 'viśva', meaning: 'Universe, all', fact: 'The root of "Vishnu" — viśva-pati, lord of the universe. Also the root of the name "Vishwas".', category: 'Etymology' },
+  { devanagari: 'जय', iast: 'jaya', meaning: 'Victory, glory', fact: 'From √ji — to conquer. Jaya refers to inner victory — the triumph of dharma over adharma.', category: 'Culture' },
+  { devanagari: 'स्वर', iast: 'svara', meaning: 'Sound, note, vowel', fact: 'The 7 svaras of Indian music mirror the 7 notes of a scale. Music is Sanskrit in sound form.', category: 'Culture' },
+  { devanagari: 'रस', iast: 'rasa', meaning: 'Essence, flavour, emotion', fact: 'The 9 rasas are the emotional essences of all art — from love to courage to wonder.', category: 'Culture' },
+  { devanagari: 'नाद', iast: 'nāda', meaning: 'Sound, cosmic vibration', fact: 'The universe began with nāda — the primal vibration. Om is the nāda of creation itself.', category: 'Spirituality' },
+  { devanagari: 'शक्ति', iast: 'śakti', meaning: 'Power, energy', fact: 'The divine feminine energy that animates the cosmos. Without śakti, even Shiva cannot move.', category: 'Mythology' },
+  { devanagari: 'लीला', iast: 'līlā', meaning: 'Divine play', fact: 'The universe is Krishna\'s līlā — a joyful, creative play with no purpose beyond itself.', category: 'Philosophy' },
+  { devanagari: 'संस्कार', iast: 'saṃskāra', meaning: 'Impression, refinement', fact: 'The 16 saṃskāras mark life\'s milestones. The word "culture" comes from the same Latin root.', category: 'Culture' },
+  { devanagari: 'वेद', iast: 'veda', meaning: 'Knowledge', fact: 'From √vid — to know. The Vedas are not books but vibrations — heard by rishis in deep meditation.', category: 'Wisdom' },
+  { devanagari: 'ऋषि', iast: 'ṛṣi', meaning: 'Sage, seer', fact: 'The rishis did not write the Vedas — they heard them. They were dṛṣṭas: seers of eternal truth.', category: 'Wisdom' },
+  { devanagari: 'तीर्थ', iast: 'tīrtha', meaning: 'Sacred ford, pilgrimage', fact: 'A tīrtha is a crossing point between the human and divine. The word also means a holy person.', category: 'Spirituality' },
+  { devanagari: 'मन्त्र', iast: 'mantra', meaning: 'Sacred sound formula', fact: 'man (mind) + tra (instrument). A mantra is a tool for the mind — sound that transforms consciousness.', category: 'Spirituality' },
+  { devanagari: 'यन्त्र', iast: 'yantra', meaning: 'Sacred geometric form', fact: 'The visual counterpart to a mantra. A yantra is geometry as a map of divine consciousness.', category: 'Spirituality' },
+  { devanagari: 'तन्त्र', iast: 'tantra', meaning: 'Weaving, system, method', fact: 'tan (weave) + tra (instrument). Tantra weaves the divine into everyday life — not what pop culture imagines.', category: 'Philosophy' },
+  { devanagari: 'आश्रम', iast: 'āśrama', meaning: 'Stage of life, hermitage', fact: 'The 4 āśramas: student, householder, forest dweller, renunciant. A complete map of a human life.', category: 'Culture' },
+  { devanagari: 'काम', iast: 'kāma', meaning: 'Desire, love, pleasure', fact: 'One of the 4 puruṣārthas. Kāma is not shameful — it is sacred when aligned with dharma.', category: 'Philosophy' },
+  { devanagari: 'पूजा', iast: 'pūjā', meaning: 'Worship, reverence', fact: 'From √pū — to purify. Pūjā transforms everyday objects into sacred offerings. God is invited as a guest.', category: 'Culture' },
+  { devanagari: 'प्रसाद', iast: 'prasāda', meaning: 'Grace, blessed offering', fact: 'What is offered to the divine and returned. Prasāda is grace made edible — the divine\'s gift back.', category: 'Culture' },
+  { devanagari: 'स्मृति', iast: 'smṛti', meaning: 'Memory, tradition', fact: 'Shruti (heard) vs smṛti (remembered). The Vedas are shruti; the Mahabharata and Ramayana are smṛti.', category: 'Wisdom' },
+  { devanagari: 'श्रुति', iast: 'śruti', meaning: 'That which is heard', fact: 'The Vedas are śruti — divine revelation heard by the rishis. They belong to no one; they come from silence.', category: 'Wisdom' },
+  { devanagari: 'कवि', iast: 'kavi', meaning: 'Poet, seer', fact: 'A kavi is not just a poet but a seer. Sanskrit poetry (kāvya) is considered a path to moksha.', category: 'Culture' },
+  { devanagari: 'सरस्वती', iast: 'sarasvatī', meaning: 'Goddess of wisdom', fact: 'saras (water/flow) + vatī (possessing). Saraswati flows — as river, as speech, as music, as knowledge.', category: 'Mythology' },
 ];
 
-// ── Colour palettes ──────────────────────────────────────────────────────────
-const PALETTES = [
-  { bg: '#1A0500', accent: '#D4AF37', text: '#FFF8E7', sub: '#E8C97A', name: 'Maroon Gold' },
-  { bg: '#0D1B2A', accent: '#C9A84C', text: '#F5EDD6', sub: '#D4B483', name: 'Midnight Gold' },
-  { bg: '#1C1C1E', accent: '#BF9642', text: '#FFFBF0', sub: '#D4AF37', name: 'Obsidian Gold' },
-  { bg: '#0A0A14', accent: '#9B7FD4', text: '#F0EBFF', sub: '#C4A8FF', name: 'Deep Violet' },
-  { bg: '#0F1A10', accent: '#7CAE7A', text: '#F0FFF0', sub: '#A8D5A2', name: 'Forest' },
-];
+// ── HTML pin template (matches reel aesthetic exactly) ───────────────────────
+function pinHTML(content, bgBase64) {
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi:ital@0;1&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1000px; height: 1500px; overflow: hidden; background: #0a0202; }
 
-// ── Draw helpers ─────────────────────────────────────────────────────────────
-function drawRoundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
+.pin {
+  width: 1000px; height: 1500px;
+  position: relative; overflow: hidden;
+  background-image: url('data:image/png;base64,${bgBase64}');
+  background-size: cover;
+  background-position: center 55%;
+}
+.pin::before {
+  content: ''; position: absolute; inset: 0;
+  background: rgba(6,2,1,0.62); z-index: 0;
+}
+.pin::after {
+  content: ''; position: absolute; inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(2,0,0,0.92) 0%, rgba(3,1,0,0.60) 22%, rgba(3,1,0,0.25) 40%, transparent 55%),
+    radial-gradient(ellipse at 50% 60%, transparent 20%, rgba(3,1,0,0.50) 80%);
+  z-index: 0;
+}
+.pin > * { position: relative; z-index: 1; }
+
+.top-border {
+  position: absolute; top: 10px; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(212,175,55,0.8), transparent);
+}
+.bot-border {
+  position: absolute; bottom: 10px; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(212,175,55,0.8), transparent);
 }
 
-function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-  const words = text.split(' ');
-  let line = '';
-  let currentY = y;
-  for (const word of words) {
-    const test = line ? `${line} ${word}` : word;
-    if (ctx.measureText(test).width > maxWidth && line) {
-      ctx.fillText(line, x, currentY);
-      line = word;
-      currentY += lineHeight;
-    } else {
-      line = test;
-    }
-  }
-  ctx.fillText(line, x, currentY);
-  return currentY;
+.category {
+  position: absolute; top: 48px; left: 0; right: 0;
+  text-align: center;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px; letter-spacing: 5px;
+  color: rgba(212,175,55,0.60);
+  text-transform: uppercase;
+}
+.logo {
+  position: absolute; top: 88px; left: 0; right: 0;
+  text-align: center;
+  font-family: 'Cormorant Garamond', serif; font-weight: 600;
+  font-size: 42px; color: #D4AF37;
+  text-shadow: 0 0 28px rgba(212,175,55,0.55);
+}
+.tagline {
+  position: absolute; top: 145px; left: 0; right: 0;
+  text-align: center;
+  font-family: 'Cormorant Garamond', serif; font-style: italic;
+  font-size: 19px; color: rgba(212,175,55,0.42);
+}
+.divider-top {
+  position: absolute; top: 188px; left: 50%; transform: translateX(-50%);
+  width: 300px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212,175,55,0.5), transparent);
 }
 
-// ── Decorative elements ──────────────────────────────────────────────────────
-function drawMandalaCorner(ctx, cx, cy, size, color, alpha = 0.15) {
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 8; i++) {
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate((i * Math.PI) / 4);
-    ctx.beginPath();
-    ctx.arc(0, size * 0.4, size * 0.4, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-  }
-  for (let r = size * 0.2; r <= size; r += size * 0.2) {
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-  ctx.restore();
+.om-bg {
+  position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
+  font-family: 'Tiro Devanagari Hindi', serif;
+  font-size: 520px; color: rgba(212,175,55,0.055);
+  line-height: 1; white-space: nowrap;
+  pointer-events: none;
 }
 
-function drawDivider(ctx, x, y, width, color) {
-  const grad = ctx.createLinearGradient(x, y, x + width, y);
-  grad.addColorStop(0, 'transparent');
-  grad.addColorStop(0.3, color);
-  grad.addColorStop(0.7, color);
-  grad.addColorStop(1, 'transparent');
-  ctx.strokeStyle = grad;
-  ctx.lineWidth = 1;
-  ctx.globalAlpha = 0.5;
-  ctx.beginPath();
-  ctx.moveTo(x, y);
-  ctx.lineTo(x + width, y);
-  ctx.stroke();
-  ctx.globalAlpha = 1;
+.deva-word {
+  position: absolute; top: 42%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Tiro Devanagari Hindi', serif;
+  font-size: 148px; font-weight: 400;
+  color: #F5E4B0;
+  text-shadow:
+    0 0 32px rgba(255,215,80,0.55),
+    0 0 70px rgba(220,155,20,0.25),
+    2px 3px 14px rgba(0,0,0,0.9);
+  letter-spacing: 4px;
+  text-align: center; width: 90%;
+  line-height: 1.2;
+}
+.translit {
+  position: absolute; top: 53.5%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Cormorant Garamond', serif; font-style: italic;
+  font-size: 34px; color: rgba(212,175,55,0.80);
+  letter-spacing: 2px; text-align: center;
+}
+.divider-mid {
+  position: absolute; top: 57%; left: 50%; transform: translateX(-50%);
+  width: 280px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212,175,55,0.5), transparent);
+}
+.meaning {
+  position: absolute; top: 62%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Cormorant Garamond', serif; font-weight: 600;
+  font-size: 54px; color: #E8D8A0;
+  text-align: center; width: 85%;
+  text-shadow: 0 2px 16px rgba(0,0,0,0.75);
+}
+.fact {
+  position: absolute; top: 70%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 30px; color: rgba(245,228,176,0.75);
+  text-align: center; width: 82%;
+  line-height: 1.55;
+}
+.divider-bot {
+  position: absolute; top: 85.5%; left: 50%; transform: translateX(-50%);
+  width: 280px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212,175,55,0.5), transparent);
+}
+.cta-url {
+  position: absolute; top: 89%; left: 0; right: 0;
+  text-align: center;
+  font-family: 'Cormorant Garamond', serif; font-weight: 600;
+  font-size: 30px; color: rgba(212,175,55,0.85);
+}
+.cta-sub {
+  position: absolute; top: 92.5%; left: 0; right: 0;
+  text-align: center;
+  font-family: 'Cormorant Garamond', serif; font-style: italic;
+  font-size: 22px; color: rgba(212,175,55,0.45);
+}
+</style>
+</head>
+<body>
+<div class="pin">
+  <div class="top-border"></div>
+  <div class="bot-border"></div>
+  <div class="category">${content.category}</div>
+  <div class="logo">VedaLingo</div>
+  <div class="tagline">Learn Sanskrit. Understand India.</div>
+  <div class="divider-top"></div>
+  <div class="om-bg">ॐ</div>
+  <div class="deva-word">${content.devanagari}</div>
+  <div class="translit">${content.iast}</div>
+  <div class="divider-mid"></div>
+  <div class="meaning">"${content.meaning}"</div>
+  <div class="fact">${content.fact}</div>
+  <div class="divider-bot"></div>
+  <div class="cta-url">🌐 vedalingo.in</div>
+  <div class="cta-sub">Free on Google Play · 10 min/day</div>
+</div>
+</body>
+</html>`;
 }
 
-function drawOmSymbol(ctx, cx, cy, size, color) {
-  // Simplified Om using text
-  ctx.save();
-  ctx.font = `${size}px serif`;
-  ctx.fillStyle = color;
-  ctx.globalAlpha = 0.12;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('ॐ', cx, cy);
-  ctx.restore();
-}
+// ── Generator ────────────────────────────────────────────────────────────────
+export async function generatePin(content) {
+  const bgPath = join(__dirname, 'bg.png');
+  const bgBase64 = readFileSync(bgPath).toString('base64');
 
-// ── Main pin generator ───────────────────────────────────────────────────────
-export function generatePin(content, paletteIndex = 0) {
-  const W = 1000, H = 1500;
-  const canvas = createCanvas(W, H);
-  const ctx = canvas.getContext('2d');
-  const P = PALETTES[paletteIndex % PALETTES.length];
-
-  // Background gradient
-  const bgGrad = ctx.createRadialGradient(W / 2, H * 0.3, 0, W / 2, H / 2, H * 0.8);
-  bgGrad.addColorStop(0, shadeColor(P.bg, 30));
-  bgGrad.addColorStop(1, P.bg);
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, W, H);
-
-  // Large Om watermark
-  drawOmSymbol(ctx, W / 2, H * 0.42, 600, P.accent);
-
-  // Corner mandalas
-  drawMandalaCorner(ctx, 0, 0, 180, P.accent, 0.12);
-  drawMandalaCorner(ctx, W, 0, 180, P.accent, 0.12);
-  drawMandalaCorner(ctx, 0, H, 180, P.accent, 0.08);
-  drawMandalaCorner(ctx, W, H, 180, P.accent, 0.08);
-
-  // Top border line
-  const topGrad = ctx.createLinearGradient(0, 0, W, 0);
-  topGrad.addColorStop(0, 'transparent');
-  topGrad.addColorStop(0.5, P.accent);
-  topGrad.addColorStop(1, 'transparent');
-  ctx.strokeStyle = topGrad;
-  ctx.lineWidth = 2;
-  ctx.globalAlpha = 0.8;
-  ctx.beginPath(); ctx.moveTo(0, 8); ctx.lineTo(W, 8); ctx.stroke();
-  ctx.globalAlpha = 1;
-
-  // Category pill
-  const catText = content.category.toUpperCase();
-  ctx.font = 'bold 26px sans-serif';
-  const catW = ctx.measureText(catText).width + 48;
-  drawRoundRect(ctx, (W - catW) / 2, 60, catW, 48, 24);
-  ctx.fillStyle = P.accent + '22';
-  ctx.fill();
-  ctx.strokeStyle = P.accent;
-  ctx.lineWidth = 1;
-  ctx.globalAlpha = 0.4;
-  ctx.stroke();
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = P.sub;
-  ctx.textAlign = 'center';
-  ctx.fillText(catText, W / 2, 93);
-
-  // VedaLingo logo area
-  ctx.font = 'bold 32px sans-serif';
-  ctx.fillStyle = P.accent;
-  ctx.textAlign = 'center';
-  ctx.fillText('VedaLingo', W / 2, 170);
-  ctx.font = '22px sans-serif';
-  ctx.fillStyle = P.sub;
-  ctx.globalAlpha = 0.7;
-  ctx.fillText('Learn Sanskrit. Understand India.', W / 2, 205);
-  ctx.globalAlpha = 1;
-
-  drawDivider(ctx, 80, 240, W - 160, P.accent);
-
-  // Devanagari — large centrepiece
-  ctx.font = `bold 160px serif`;
-  ctx.fillStyle = P.text;
-  ctx.textAlign = 'center';
-  ctx.shadowColor = P.accent;
-  ctx.shadowBlur = 30;
-  ctx.fillText(content.devanagari, W / 2, 520);
-  ctx.shadowBlur = 0;
-
-  // IAST transliteration
-  ctx.font = 'italic 52px serif';
-  ctx.fillStyle = P.sub;
-  ctx.textAlign = 'center';
-  ctx.fillText(content.iast, W / 2, 610);
-
-  drawDivider(ctx, 120, 660, W - 240, P.accent);
-
-  // Meaning
-  ctx.font = 'bold 48px sans-serif';
-  ctx.fillStyle = P.accent;
-  ctx.textAlign = 'center';
-  ctx.fillText(content.meaning, W / 2, 740);
-
-  // Fact card
-  drawRoundRect(ctx, 60, 790, W - 120, 380, 20);
-  ctx.fillStyle = '#ffffff08';
-  ctx.fill();
-  ctx.strokeStyle = P.accent + '33';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  ctx.font = '34px sans-serif';
-  ctx.fillStyle = P.text;
-  ctx.textAlign = 'left';
-  ctx.globalAlpha = 0.9;
-  wrapText(ctx, content.fact, 100, 860, W - 200, 52);
-  ctx.globalAlpha = 1;
-
-  drawDivider(ctx, 80, 1210, W - 160, P.accent);
-
-  // CTA section
-  ctx.font = 'bold 36px sans-serif';
-  ctx.fillStyle = P.accent;
-  ctx.textAlign = 'center';
-  ctx.fillText('Learn Sanskrit for free', W / 2, 1290);
-
-  ctx.font = '28px sans-serif';
-  ctx.fillStyle = P.sub;
-  ctx.globalAlpha = 0.8;
-  ctx.fillText('vedalingo.in  ·  Available on Google Play', W / 2, 1340);
-  ctx.globalAlpha = 1;
-
-  // Bottom decorative dots
-  for (let i = 0; i < 5; i++) {
-    ctx.beginPath();
-    ctx.arc(W / 2 + (i - 2) * 24, 1400, i === 2 ? 5 : 3, 0, Math.PI * 2);
-    ctx.fillStyle = i === 2 ? P.accent : P.sub + '66';
-    ctx.fill();
-  }
-
-  // Bottom border
-  ctx.strokeStyle = topGrad;
-  ctx.lineWidth = 2;
-  ctx.globalAlpha = 0.8;
-  ctx.beginPath(); ctx.moveTo(0, H - 8); ctx.lineTo(W, H - 8); ctx.stroke();
-  ctx.globalAlpha = 1;
-
-  return canvas.toBuffer('image/png');
-}
-
-function shadeColor(hex, pct) {
-  const n = parseInt(hex.slice(1), 16);
-  const r = Math.min(255, (n >> 16) + pct);
-  const g = Math.min(255, ((n >> 8) & 0xff) + pct);
-  const b = Math.min(255, (n & 0xff) + pct);
-  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
-}
-
-// ── Upload to Cloudinary ─────────────────────────────────────────────────────
-export async function uploadPin(buffer, publicId) {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      { public_id: publicId, folder: 'vedalingo-pinterest', overwrite: true, resource_type: 'image' },
-      (err, result) => err ? reject(err) : resolve(result.secure_url)
-    );
-    stream.end(buffer);
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--font-render-hinting=none'],
   });
+
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1000, height: 1500, deviceScaleFactor: 1 });
+  await page.setContent(pinHTML(content, bgBase64), { waitUntil: 'networkidle0', timeout: 20000 });
+  await new Promise(r => setTimeout(r, 800)); // let fonts paint
+
+  const buffer = await page.screenshot({ type: 'png', fullPage: false });
+  await browser.close();
+  return buffer;
 }
 
-// ── CLI: generate today's pin ────────────────────────────────────────────────
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const state = JSON.parse(readFileSync(join(__dirname, 'post-state.json'), 'utf8'));
-  const dayIndex = (state.currentDay - 1) % PIN_CONTENT.length;
-  const content = PIN_CONTENT[dayIndex];
-  const paletteIndex = state.currentDay % PALETTES.length;
+// ── Entry point (called by GitHub Action) ────────────────────────────────────
+const stateFile = join(__dirname, 'post-state.json');
+const state = JSON.parse(readFileSync(stateFile, 'utf8'));
+const dayIndex = (state.currentDay - 1) % PIN_CONTENT.length;
+const content = PIN_CONTENT[dayIndex];
 
-  console.log(`Generating pin for day ${state.currentDay}: ${content.devanagari} (${content.meaning})`);
-  const buffer = generatePin(content, paletteIndex);
+const buffer = await generatePin(content);
 
-  const localPath = join(__dirname, '..', 'output', `pinterest-day-${state.currentDay}.png`);
-  writeFileSync(localPath, buffer);
-  console.log(`✅ Saved locally: ${localPath}`);
+const result = await new Promise((resolve, reject) => {
+  cloudinary.uploader.upload_stream(
+    { public_id: `vedalingo-pinterest/pinterest-day-${state.currentDay}`, overwrite: true, resource_type: 'image' },
+    (err, res) => err ? reject(err) : resolve(res)
+  ).end(buffer);
+});
 
-  const url = await uploadPin(buffer, `pinterest-day-${state.currentDay}`);
-  console.log(`✅ Cloudinary URL: ${url}`);
-  console.log(url); // used by GitHub Action
-}
+console.log(result.secure_url);

@@ -21,12 +21,12 @@ jobs:
         working-directory: automation
         run: npm install
 
-      - name: Install canvas dependencies
-        run: sudo apt-get install -y libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+      - name: Install system dependencies for Puppeteer
+        run: sudo apt-get install -y libnss3 libatk-bridge2.0-0 libdrm2 libxkbcommon0 libgbm1 libasound2t64
 
-      - name: Install canvas npm package
+      - name: Install npm packages
         working-directory: automation
-        run: npm install canvas cloudinary
+        run: npm install puppeteer cloudinary
 
       - name: Generate pin image & upload to Cloudinary
         working-directory: automation
