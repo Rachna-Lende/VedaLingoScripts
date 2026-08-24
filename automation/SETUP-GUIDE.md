@@ -129,7 +129,75 @@ YouTube refresh tokens **never expire** as long as you use them at least once ev
 
 ---
 
-## PART 3 — Test Before Scheduling
+## PART 3 — Pinterest Setup (once Standard access is approved)
+
+Pinterest Standard API access is **currently pending**. Once approved, follow these steps.
+
+### Step 1 — Get your Pinterest Access Token
+
+1. Go to **https://developers.pinterest.com/apps/**
+2. Open your VedaLingo app → **Generate Access Token**
+3. Select scopes: `pins:read`, `pins:write`, `boards:read`, `boards:write`
+4. Copy the token
+
+### Step 2 — Get your Board IDs
+
+1. Go to your Pinterest profile → open each board
+2. The board ID is in the URL: `pinterest.com/vedalingo/sanskrit-words-and-meanings/**BOARD_ID**`
+3. Alternatively run: `node pinterest-auto-pin.js --list-boards` (requires token)
+
+### Step 3 — Add to credentials.json
+
+```json
+{
+  "instagramAccessToken": "...",
+  "instagramUserId": "...",
+  "youtubeClientId": "...",
+  "youtubeClientSecret": "...",
+  "youtubeRefreshToken": "...",
+  "pinterestAccessToken": "paste your Pinterest token here",
+  "pinterestBoardIds": {
+    "word":    "BOARD_ID_for_Sanskrit_Words_and_Meanings",
+    "grammar": "BOARD_ID_for_Learn_Sanskrit_Grammar",
+    "myth":    "BOARD_ID_for_Indian_Mythology_and_Stories"
+  }
+}
+```
+
+### Step 4 — Dry run first (always safe)
+
+```powershell
+cd C:\SanskritClaude\VedaLingoScripts
+node pinterest-auto-pin.js --dry-run
+```
+
+This shows title, description, and board for every content item — no API calls made.
+
+### Step 5 — Create all pins
+
+```powershell
+node pinterest-auto-pin.js --create-all
+```
+
+Pins are rate-limited to ~10/minute (Pinterest Standard limit). Progress is saved in `pinterest-pin-state.json`.
+
+### Step 6 — Fix existing mismatched pins
+
+If you already have pins with wrong descriptions (like Jaya with Shanti's text):
+
+```powershell
+# Update all existing pins whose IDs are stored in pinterest-pin-state.json
+node pinterest-auto-pin.js --update-existing
+```
+
+Or update a single pin:
+```powershell
+node pinterest-auto-pin.js --update-existing --id jaya
+```
+
+---
+
+## PART 4 — Test Before Scheduling
 
 Run a test post manually:
 ```powershell
@@ -184,6 +252,8 @@ schtasks /change /tn "VedaLingo-EveningPost" /enable
 | `credentials.json` | Your API keys (never share/commit this) |
 | `post-state.json` | Tracks progress — which day, which reel is next |
 | `post-logs/` | Daily log files for each post |
+| `../pinterest-auto-pin.js` | Create/update Pinterest pins — title+description+board all from same content object |
+| `../pinterest-pin-state.json` | Tracks which pins have been created and their Pinterest pin IDs |
 
 ---
 

@@ -47,4 +47,58 @@ function generateYouTubeTags(type) {
   return [...base, ...extra[type]];
 }
 
-module.exports = { generateCaption, generateYouTubeTitle, generateYouTubeTags };
+// ── Pinterest ────────────────────────────────────────────────────────────────
+// Pin title, description, and board are all derived from the SAME content
+// object — so they can never go out of sync.
+
+const PINTEREST_BOARD = {
+  word:    'Sanskrit Words and Meanings',
+  grammar: 'Learn Sanskrit Grammar',
+  myth:    'Indian Mythology and Stories',
+};
+
+function generatePinTitle(type, content) {
+  if (type === 'word') {
+    // "Viveka (विवेक) — Discernment: Sanskrit Word Meaning"
+    const meaning = content.screenText.split('·')[0].trim();
+    return `${content.translit.charAt(0).toUpperCase() + content.translit.slice(1)} (${content.devanagari}) — ${meaning}: Sanskrit Word Meaning`.slice(0, 100);
+  }
+  if (type === 'grammar') {
+    return `${content.screenText.slice(0, 70)} | Sanskrit Grammar | VedaLingo`.slice(0, 100);
+  }
+  return `${content.screenText.slice(0, 70)} | Sanskrit Story | VedaLingo`.slice(0, 100);
+}
+
+function generatePinDescription(type, content) {
+  if (type === 'word') {
+    return [
+      `✨ Sanskrit Word: ${content.devanagari} · ${content.translit} — ${content.screenText}`,
+      `${content.voice2} ${content.voice3} ${content.voice4}`,
+      `Learn Sanskrit words, grammar, stories from the Mahabharata & Ramayana — free on VedaLingo. 🌐 vedalingo.in 📱 Download free: https://play.google.com/store/apps/details?id=com.vedalingo.app`,
+      `#Sanskrit #LearnSanskrit #VedaLingo #SanskritWords #IndianCulture #Vedic #Hinduism #AncientWisdom #SanskritDaily #IndianPhilosophy`,
+    ].join('\n\n');
+  }
+  if (type === 'grammar') {
+    return [
+      `📚 Sanskrit Grammar: ${content.screenText}`,
+      `${content.voice2} ${content.voice3} ${content.voice4}`,
+      `Learn Sanskrit grammar, words, and stories free on VedaLingo. 🌐 vedalingo.in`,
+      `#SanskritGrammar #LearnSanskrit #VedaLingo #Sanskrit #AncientLanguage #IndianCulture`,
+    ].join('\n\n');
+  }
+  return [
+    `🌸 ${content.screenText}`,
+    `${content.voice2} ${content.voice3} ${content.voice4}`,
+    `Explore Sanskrit stories, mythology, and wisdom free on VedaLingo. 🌐 vedalingo.in`,
+    `#IndianMythology #Sanskrit #VedaLingo #AncientIndia #Mahabharata #Ramayana #VedicStories`,
+  ].join('\n\n');
+}
+
+function getPinterestBoard(type) {
+  return PINTEREST_BOARD[type] || 'Sanskrit Words and Meanings';
+}
+
+module.exports = {
+  generateCaption, generateYouTubeTitle, generateYouTubeTags,
+  generatePinTitle, generatePinDescription, getPinterestBoard,
+};
