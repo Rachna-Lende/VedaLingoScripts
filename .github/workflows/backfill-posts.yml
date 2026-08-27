@@ -1,0 +1,183 @@
+name: Backfill Posts — Day Range
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_day:
+        description: 'First day to post (e.g. 1)'
+        required: true
+        default: '1'
+      end_day:
+        description: 'Last day to post (e.g. 25)'
+        required: true
+        default: '25'
+      delay_seconds:
+        description: 'Seconds to wait between each reel post (default 90 — avoids Instagram rate limits)'
+        required: false
+        default: '90'
+
+concurrency:
+  group: vedalingo-post
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install --prefix automation
+
+      - name: Backfill reels ${{ inputs.start_day }} → ${{ inputs.end_day }}
+        run: |
+          node - <<'JSEOF'
+          const https   = require('https');
+          const { execSync } = require('child_process');
+
+          const START = parseInt(process.env.START_DAY);
+          const END   = parseInt(process.env.END_DAY);
+          const DELAY = parseInt(process.env.DELAY_SEC) * 1000;
+          const WEBHOOK_URL = process.env.WEBHOOK_URL;
+
+          if (!WEBHOOK_URL) { console.error('❌ MAKE_INSTAGRAM_WEBHOOK secret not set'); process.exit(1); }
+
+          function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+          function postToWebhook(payload) {
+            return new Promise((resolve, reject) => {
+              const body = JSON.stringify(payload);
+              const url  = new URL(WEBHOOK_URL);
+              const req  = https.request(
+                { hostname: url.hostname, path: url.pathname + url.search, method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) } },
+                res => {
+                  let data = '';
+                  res.on('data', c => data += c);
+                  res.on('end', () => { console.log(`  → HTTP ${res.statusCode}: ${data.slice(0,80)}`); resolve(res.statusCode); });
+                }
+              );
+              req.on('error', e => { console.error(`  → Error: ${e.message}`); resolve(0); });
+              req.write(body);
+              req.end();
+            });
+          }
+
+          function getReelInfo(day, reelNum) {
+            try {
+              const out = execSync(`node automation/get-reel-info.js ${day} ${reelNum}`, { encoding: 'utf8' });
+              return JSON.parse(out.trim());
+            } catch (e) {
+              console.error(`  ❌ get-reel-info failed for day ${day} R${reelNum}: ${e.message}`);
+              return null;
+            }
+          }
+
+          function getVideoUrl(day, reelNum) {
+            try {
+              const manifest = require('./cloudinary-manifest.json');
+              const key = `day${String(day).padStart(3,'0')}_R${reelNum}`;
+              const url = manifest[key];
+              if (!url) console.warn(`  ⚠ No manifest entry for ${key}`);
+              return url || null;
+            } catch(e) {
+              console.error('  ❌ cloudinary-manifest.json not found');
+              return null;
+            }
+          }
+
+          async function main() {
+            console.log(`\n🎬 Backfilling days ${START} → ${END} (delay: ${DELAY/1000}s between posts)\n`);
+            let posted = 0, failed = 0;
+
+            for (let day = START; day <= END; day++) {
+              console.log(`\n── Day ${day} ──────────────────────`);
+
+              for (const reelNum of [1, 2]) {
+                const info     = getReelInfo(day, reelNum);
+                const videoUrl = getVideoUrl(day, reelNum);
+
+                if (!info || !videoUrl) {
+                  console.log(`  ⏭ Day ${day} R${reelNum}: skipping (missing info or video)`);
+                  failed++;
+                  continue;
+                }
+
+                const payload = {
+                  video_url: videoUrl,
+                  caption:   info.caption,
+                  title:     info.ytTitle,
+                  filename:  `day${String(day).padStart(3,'0')}_R${reelNum}_${info.contentId}.mp4`,
+                  day,
+                  reel:      `R${reelNum}`,
+                  type:      info.type,
+                };
+
+                console.log(`  📤 Posting Day ${day} R${reelNum} — ${info.type}/${info.contentId}`);
+                const status = await postToWebhook(payload);
+                if (status >= 200 && status < 300) {
+                  console.log(`  ✅ Posted`);
+                  posted++;
+                } else {
+                  console.log(`  ❌ Failed (status ${status})`);
+                  failed++;
+                }
+
+                if (!(day === END && reelNum === 2)) {
+                  console.log(`  ⏳ Waiting ${DELAY/1000}s...`);
+                  await sleep(DELAY);
+                }
+              }
+            }
+
+            console.log(`\n═══════════════════════════════`);
+            console.log(`✅ Posted: ${posted} | ❌ Failed: ${failed}`);
+            console.log(`Days covered: ${START} → ${END} (${(END-START+1)*2} reels)`);
+          }
+
+          main().catch(e => { console.error('FATAL:', e); process.exit(1); });
+          JSEOF
+        env:
+          START_DAY: ${{ inputs.start_day }}
+          END_DAY: ${{ inputs.end_day }}
+          DELAY_SEC: ${{ inputs.delay_seconds }}
+          WEBHOOK_URL: ${{ secrets.MAKE_INSTAGRAM_WEBHOOK }}
+
+      - name: Update post-state — advance to day after end_day
+        if: always()
+        run: |
+          node - <<'JSEOF'
+          const fs = require('fs');
+          const state = JSON.parse(fs.readFileSync('automation/post-state.json', 'utf8'));
+          const endDay = parseInt(process.env.END_DAY);
+          // Advance state to the day after the backfilled range
+          state.currentDay = endDay + 1;
+          state.reelsPostedToday = 0;
+          state.lastPosted = new Date().toISOString().split('T')[0];
+          fs.writeFileSync('automation/post-state.json', JSON.stringify(state, null, 2));
+          console.log(`State updated: currentDay → ${state.currentDay}`);
+          JSEOF
+        env:
+          END_DAY: ${{ inputs.end_day }}
+
+      - name: Commit updated post-state
+        if: always()
+        run: |
+          git config user.name  "VedaLingo Bot"
+          git config user.email "rachna.lende@gmail.com"
+          git add automation/post-state.json
+          git diff --staged --quiet || git commit -m "chore: backfill days ${{ inputs.start_day }}–${{ inputs.end_day }} post-state update [skip ci]"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
