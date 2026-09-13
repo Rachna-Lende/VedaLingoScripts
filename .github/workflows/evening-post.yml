@@ -30,8 +30,10 @@ jobs:
       - name: Get today's reel info
         id: reel
         run: |
+          CURRENT_BATCH=$(node -e "console.log(require('./automation/post-state.json').currentBatch||1)")
           CURRENT_DAY=$(node -e "console.log(require('./automation/post-state.json').currentDay)")
-          DAY_PAD=$(printf "%03d" $CURRENT_DAY)
+          ABS_DAY=$(( (CURRENT_BATCH - 1) * 90 + CURRENT_DAY ))
+          DAY_PAD=$(printf "%03d" $ABS_DAY)
           KEY="day${DAY_PAD}_R2"
           VIDEO_URL=$(node -e "const m=require('./cloudinary-manifest.json'); console.log(m['${KEY}']||'')")
           if [ -z "$VIDEO_URL" ]; then
@@ -42,7 +44,7 @@ jobs:
           TYPE=$(echo $INFO | node -e "process.stdin.resume();let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).type))")
           CONTENT_ID=$(echo $INFO | node -e "process.stdin.resume();let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).contentId))")
           echo $INFO > /tmp/reel-info.json
-          echo "day=$CURRENT_DAY" >> $GITHUB_OUTPUT
+          echo "day=$ABS_DAY" >> $GITHUB_OUTPUT
           echo "url=$VIDEO_URL" >> $GITHUB_OUTPUT
           echo "type=$TYPE" >> $GITHUB_OUTPUT
           echo "contentId=$CONTENT_ID" >> $GITHUB_OUTPUT
@@ -92,27 +94,21 @@ jobs:
         if: always()
         run: |
           python3 -c "
-          import json
+          import json, datetime
           with open('automation/post-state.json') as f:
               state = json.load(f)
-          next_day = (state['currentDay'] % 90) + 1
-          if next_day == 1:
-              replay_until = state.pop('replayUntil', None)
-              if replay_until:
-                  next_day = 1
-                  state['_replayEnd'] = replay_until
-              else:
-                  state['currentBatch'] = state.get('currentBatch', 1) + 1
-          elif state.get('_replayEnd') and state['currentDay'] >= state['_replayEnd']:
-              del state['_replayEnd']
+          batch_max = state.get('batchMaxDay', 90)
+          if state['currentDay'] >= batch_max:
               state['currentBatch'] = state.get('currentBatch', 1) + 1
-              next_day = 1
-          state['currentDay'] = next_day
-          import datetime
+              state['currentDay'] = 1
+              state.pop('batchMaxDay', None)
+              print(f'Batch transition! Now Batch {state[\"currentBatch\"]} Day 1')
+          else:
+              state['currentDay'] = state['currentDay'] + 1
           state['lastPosted'] = datetime.date.today().isoformat()
           with open('automation/post-state.json', 'w') as f:
               json.dump(state, f, indent=2)
-          print('Advanced to day', state['currentDay'])
+          print('Advanced to day', state['currentDay'], 'batch', state.get('currentBatch',1))
           "
           git config user.name  "VedaLingo Bot"
           git config user.email "rachna.lende@gmail.com"

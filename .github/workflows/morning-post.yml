@@ -30,8 +30,10 @@ jobs:
       - name: Get today's reel info
         id: reel
         run: |
+          CURRENT_BATCH=$(node -e "console.log(require('./automation/post-state.json').currentBatch||1)")
           CURRENT_DAY=$(node -e "console.log(require('./automation/post-state.json').currentDay)")
-          DAY_PAD=$(printf "%03d" $CURRENT_DAY)
+          ABS_DAY=$(( (CURRENT_BATCH - 1) * 90 + CURRENT_DAY ))
+          DAY_PAD=$(printf "%03d" $ABS_DAY)
           KEY="day${DAY_PAD}_R1"
           VIDEO_URL=$(node -e "const m=require('./cloudinary-manifest.json'); console.log(m['${KEY}']||'')")
           if [ -z "$VIDEO_URL" ]; then
@@ -42,7 +44,7 @@ jobs:
           TYPE=$(echo $INFO | node -e "process.stdin.resume();let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).type))")
           CONTENT_ID=$(echo $INFO | node -e "process.stdin.resume();let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).contentId))")
           echo $INFO > /tmp/reel-info.json
-          echo "day=$CURRENT_DAY" >> $GITHUB_OUTPUT
+          echo "day=$ABS_DAY" >> $GITHUB_OUTPUT
           echo "url=$VIDEO_URL" >> $GITHUB_OUTPUT
           echo "type=$TYPE" >> $GITHUB_OUTPUT
           echo "contentId=$CONTENT_ID" >> $GITHUB_OUTPUT
