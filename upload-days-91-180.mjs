@@ -15,7 +15,7 @@ const OUTPUT_DIR  = path.join(__dirname, 'output');
 const MANIFEST    = path.join(__dirname, 'cloudinary-manifest.json');
 
 // Batch 2 reels are in output/batch-2/day-001 … day-090
-// but they map to days 91-180 in the manifest (day 91 = batch-2/day-001, etc.)
+// They map to manifest keys day091–day180 (day 91 = batch-2/day-001, etc.)
 const BATCH2_DIR = path.join(__dirname, 'output', 'batch-2');
 const START_DAY = 91;
 const END_DAY   = 180;
