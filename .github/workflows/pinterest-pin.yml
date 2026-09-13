@@ -50,9 +50,7 @@ jobs:
       - name: Post to Pinterest
         working-directory: automation
         env:
-          PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
-          PINTEREST_BOARD_ID: ${{ secrets.PINTEREST_BOARD_ID }}
-          PINTEREST_SANDBOX: ${{ secrets.PINTEREST_SANDBOX }}
+          MAKE_PINTEREST_WEBHOOK: ${{ secrets.MAKE_PINTEREST_WEBHOOK }}
         run: |
           node post-to-pinterest.mjs "${{ steps.generate.outputs.image_url }}" "${{ steps.state.outputs.day }}"
 
