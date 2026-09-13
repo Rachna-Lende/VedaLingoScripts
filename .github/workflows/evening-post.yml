@@ -35,11 +35,13 @@ jobs:
           ABS_DAY=$(( (CURRENT_BATCH - 1) * 90 + CURRENT_DAY ))
           DAY_PAD=$(printf "%03d" $ABS_DAY)
           KEY="day${DAY_PAD}_R2"
-          VIDEO_URL=$(node -e "const m=require('./cloudinary-manifest.json'); console.log(m['${KEY}']||'')")
-          if [ -z "$VIDEO_URL" ]; then
+          RAW_URL=$(node -e "const m=require('./cloudinary-manifest.json'); console.log(m['${KEY}']||'')")
+          if [ -z "$RAW_URL" ]; then
             echo "❌ No manifest entry for ${KEY} — run upload-to-cloudinary.mjs locally first"
             exit 1
           fi
+          # Force H.264+AAC via Cloudinary transformation to fix Instagram error 2207076
+          VIDEO_URL=$(echo "$RAW_URL" | sed 's|/upload/|/upload/vc_h264,ac_aac,br_4000k/|')
           INFO=$(node automation/get-reel-info.js $CURRENT_DAY 2)
           TYPE=$(echo $INFO | node -e "process.stdin.resume();let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).type))")
           CONTENT_ID=$(echo $INFO | node -e "process.stdin.resume();let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).contentId))")
