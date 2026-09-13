@@ -1,1 +1,22 @@
-﻿{"currentBatch":1,"nextBatch":2,"lastGenerated":"2026-06-25","nextScheduledRun":"2026-09-13","batchHistory":[{"batch":1,"generated":"2026-06-25","days":"1-90","reels":180,"outputFolder":"batch-1"}]}
+{
+  "currentBatch": 2,
+  "nextBatch": 3,
+  "lastGenerated": "2026-09-13",
+  "nextScheduledRun": "2026-12-11",
+  "batchHistory": [
+    {
+      "batch": 1,
+      "generated": "2026-06-25",
+      "days": "1-90",
+      "reels": 180,
+      "outputFolder": "batch-1"
+    },
+    {
+      "batch": 2,
+      "generated": "2026-09-13",
+      "days": "1-90",
+      "reels": 180,
+      "outputFolder": "batch-2"
+    }
+  ]
+}
