@@ -27,7 +27,7 @@ body { background: #0a0202; display: flex; flex-direction: column; align-items: 
 .reel {
   width: 763px; height: 1600px;
   position: relative; overflow: hidden; flex-shrink: 0;
-  background: url('${__dirname.replace(/\\/g, '/')}/bg.png') center top / cover no-repeat;
+  background: url('file:///${__dirname.replace(/\\/g, '/')}/bg.png') center top / cover no-repeat;
 }
 .reel::before {
   content: ''; position: absolute; inset: 0;

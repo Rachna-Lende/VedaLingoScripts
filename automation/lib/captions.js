@@ -1,6 +1,7 @@
 // Caption + hashtag generator for each reel type
 
 const BRAND_TAGS = '#VedaLingo #Sanskrit #SanskritLearning #LearnSanskrit #IndianHeritage';
+const LINKS = '🌐 vedalingo.in\n📱 Download free: https://play.google.com/store/apps/details?id=com.vedalingo.app';
 
 const TYPE_TAGS = {
   word:    '#SanskritWord #DailyWord #AncientWisdom #VedicKnowledge #SanskritDaily #IndianCulture #WordOfTheDay #SanskritLanguage',
@@ -25,7 +26,7 @@ function generateCaption(type, content) {
   }
 
   const tags = `${BRAND_TAGS} ${TYPE_TAGS[type]}`;
-  return `${body}\n\n${tags}`;
+  return `${body}\n\n${LINKS}\n\n${tags}`;
 }
 
 function generateYouTubeTitle(type, content) {
