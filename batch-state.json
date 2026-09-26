@@ -1,8 +1,8 @@
 {
   "currentBatch": 2,
   "nextBatch": 3,
-  "lastGenerated": "2026-09-13",
-  "nextScheduledRun": "2026-12-11",
+  "lastGenerated": "2026-09-24",
+  "nextScheduledRun": "2026-12-22",
   "batchHistory": [
     {
       "batch": 1,
@@ -14,6 +14,13 @@
     {
       "batch": 2,
       "generated": "2026-09-13",
+      "days": "1-90",
+      "reels": 180,
+      "outputFolder": "batch-2"
+    },
+    {
+      "batch": 2,
+      "generated": "2026-09-24",
       "days": "1-90",
       "reels": 180,
       "outputFolder": "batch-2"
