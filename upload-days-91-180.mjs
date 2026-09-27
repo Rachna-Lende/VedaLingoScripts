@@ -69,15 +69,10 @@ async function main() {
       const reel = filename.includes('_R1_') ? 'R1' : 'R2';
       const key  = `day${dayPad}_${reel}`;
 
-      if (manifest[key]) {
-        console.log(`  ✅ ${key} already uploaded`);
-        continue;
-      }
-
       const filePath = path.join(dayFolder, filename);
-      const publicId = `vedalingo/${key}`;
+      const publicId = `vedalingo/${key}_v2`;
 
-      console.log(`  ⬆️  Uploading ${filename}...`);
+      console.log(`  ⬆️  Uploading ${filename} as ${publicId}...`);
       try {
         const url = await uploadVideo(filePath, publicId);
         manifest[key] = url;
