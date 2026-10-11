@@ -2283,4 +2283,38 @@ function buildSchedule() {
   return schedule;
 }
 
-module.exports = { WORDS, GRAMMAR, MYTHS, buildSchedule };
+// ─────────────────────────────────────────────
+// BATCH 2 SCHEDULE — 90 days of FRESH content
+// Uses only words/grammar/myths NOT in Batch 1
+// ─────────────────────────────────────────────
+function buildBatch2Schedule() {
+  const batch1 = buildSchedule();
+  const usedWordIds    = batch1.map(s => s.reel1.type === 'word'    ? s.reel1.data.id : s.reel2.type === 'word'    ? s.reel2.data.id : null).filter(Boolean);
+  const usedGrammarIds = batch1.map(s => s.reel1.type === 'grammar' ? s.reel1.data.id : s.reel2.type === 'grammar' ? s.reel2.data.id : null).filter(Boolean);
+  const usedMythIds    = batch1.map(s => s.reel1.type === 'myth'    ? s.reel1.data.id : s.reel2.type === 'myth'    ? s.reel2.data.id : null).filter(Boolean);
+
+  const freshWords   = WORDS.filter(w => !usedWordIds.includes(w.id));
+  const freshGrammar = GRAMMAR.filter(g => !usedGrammarIds.includes(g.id));
+  const freshMyths   = MYTHS.filter(m => !usedMythIds.includes(m.id));
+
+  const schedule = [];
+  let wi = 0, gi = 0, mi = 0;
+  for (let d = 1; d <= 90; d++) {
+    const mod = (d - 1) % 3;
+    let reel1, reel2;
+    if (mod === 0) {
+      reel1 = { type: 'word',    data: freshWords[wi++ % freshWords.length]     };
+      reel2 = { type: 'grammar', data: freshGrammar[gi++ % freshGrammar.length] };
+    } else if (mod === 1) {
+      reel1 = { type: 'grammar', data: freshGrammar[gi++ % freshGrammar.length] };
+      reel2 = { type: 'myth',    data: freshMyths[mi++ % freshMyths.length]     };
+    } else {
+      reel1 = { type: 'myth',    data: freshMyths[mi++ % freshMyths.length]     };
+      reel2 = { type: 'word',    data: freshWords[wi++ % freshWords.length]      };
+    }
+    schedule.push({ day: d, reel1, reel2 });
+  }
+  return schedule;
+}
+
+module.exports = { WORDS, GRAMMAR, MYTHS, buildSchedule, buildBatch2Schedule };

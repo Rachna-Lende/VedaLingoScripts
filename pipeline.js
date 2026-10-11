@@ -11,13 +11,12 @@ const { MsEdgeTTS, OUTPUT_FORMAT } = require('msedge-tts');
 const { execFileSync } = require('child_process');
 const ffmpegPath  = require('@ffmpeg-installer/ffmpeg').path;
 const ffprobePath = require('@ffprobe-installer/ffprobe').path;
-const { reelHTML }        = require('./reel-template');
-const { buildSchedule }   = require('./content-data');
+const { reelHTML }                       = require('./reel-template');
+const { buildSchedule, buildBatch2Schedule } = require('./content-data');
 const path = require('path');
 const fs   = require('fs');
 
 // ── Config ─────────────────────────────────────────────────────────────
-const BASE    = path.join(__dirname, 'output');
 const SITAR   = 'C:\\Users\\Rachna Lende\\Downloads\\44231991-sitar-215153.mp3';
 const MUSIC   = fs.existsSync(SITAR) ? SITAR
               : fs.existsSync(path.join(__dirname, 'music.mp3'))
@@ -25,13 +24,19 @@ const MUSIC   = fs.existsSync(SITAR) ? SITAR
 const VOICE   = 'en-IN-NeerjaNeural';
 const SCREENS = ['s1', 's2', 's3', 's4'];
 
-if (!fs.existsSync(BASE)) fs.mkdirSync(BASE);
-
 // ── Argument parsing ────────────────────────────────────────────────────
 const args = process.argv.slice(2);
+const isBatch2 = args.includes('--batch2');
 let dayFrom = 1, dayTo = 90, onlyReel = null;
 if (args.includes('--reel')) onlyReel = parseInt(args[args.indexOf('--reel') + 1]);
 const nums = args.filter(a => !isNaN(a)).map(Number);
+
+// Output goes to output/batch-2/ when --batch2 flag is used
+const BASE = isBatch2
+  ? path.join(__dirname, 'output', 'batch-2')
+  : path.join(__dirname, 'output');
+
+if (!fs.existsSync(BASE)) fs.mkdirSync(BASE, { recursive: true });
 if (nums.length >= 1) dayFrom = dayTo = nums[0];
 if (nums.length >= 2) dayTo = nums[1];
 
@@ -167,7 +172,8 @@ async function generateReel(browser, tts, dayNum, reelNum, entry) {
 
 // ── Main ────────────────────────────────────────────────────────────────
 (async () => {
-  const schedule = buildSchedule();
+  const schedule = isBatch2 ? buildBatch2Schedule() : buildSchedule();
+  if (isBatch2) console.log('🆕 Using Batch 2 schedule — fresh content, never posted before');
 
   console.log(`\n🎬 VedaLingo Pipeline`);
   console.log(`   Days ${dayFrom}–${dayTo}  |  ${MUSIC ? '🎵 music on' : 'no music'}  |  voice: ${VOICE}\n`);
