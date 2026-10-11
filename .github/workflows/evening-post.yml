@@ -117,6 +117,6 @@ jobs:
           git add automation/post-state.json
           git diff --staged --quiet || git commit -m "chore: advance to next day after evening post [skip ci]"
           git fetch origin main
-          git rebase origin/main
-          git push origin HEAD:main
+          git merge origin/main --no-edit --allow-unrelated-histories || true
+          git push origin HEAD:main || (git pull --rebase origin main && git push origin HEAD:main)
 
